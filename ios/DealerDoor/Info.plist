@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key><string>en</string>
+	<key>CFBundleLocalizations</key><array><string>en</string><string>es</string></array>
+	<key>CFBundleDisplayName</key><string>DealerDoor</string>
+	<key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+	<key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key><string>com.dealerdoor.app</string>
+			<key>CFBundleURLSchemes</key><array><string>dealerdoor</string></array>
+		</dict>
+	</array>
+	<key>API_BASE_URL</key><string>$(API_BASE_URL)</string>
+	<key>ITSAppUsesNonExemptEncryption</key><false/>
+	<key>LSRequiresIPhoneOS</key><true/>
+	<key>NSAppTransportSecurity</key>
+	<dict><key>NSAllowsLocalNetworking</key><true/></dict>
+	<key>NSCameraUsageDescription</key><string>Take a photo of the property or install for the order record.</string>
+	<key>NSFaceIDUsageDescription</key><string>Unlock DealerDoor without signing in again.</string>
+	<key>NSLocationWhenInUseUsageDescription</key><string>Verify you are at the property when you check in, and show your route on the map.</string>
+	<key>UIBackgroundModes</key><array><string>remote-notification</string></array>
+	<key>UILaunchScreen</key><dict/>
+	<key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
+</dict>
+</plist>
