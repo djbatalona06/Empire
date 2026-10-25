@@ -298,7 +298,10 @@ struct FeedbackTabView: View {
 struct FeedbackForm: View {
     let orderId: String
     let onDone: () async -> Void
-    @State private var sales = 0, install = 0, clarity = 0, support = 0
+    @State private var sales = 0
+    @State private var install = 0
+    @State private var clarity = 0
+    @State private var support = 0
     @State private var comment = ""
     @State private var photoItem: PhotosPickerItem?
     @State private var photo: Data?

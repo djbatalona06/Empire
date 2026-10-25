@@ -37,7 +37,7 @@ final class PendingOp {
 final class SyncEngine {
     static let shared = SyncEngine()
 
-    var container: ModelContainer!
+    @ObservationIgnored var container: ModelContainer!
     private(set) var pendingCount = 0
     private(set) var conflictCount = 0
     private var flushing = false

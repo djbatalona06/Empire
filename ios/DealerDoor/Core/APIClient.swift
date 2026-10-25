@@ -32,7 +32,7 @@ final class APIClient {
 
     var tokens: Tokens? {
         get { Keychain.load(Tokens.self, key: "tokens") }
-        set { newValue.map { Keychain.save($0, key: "tokens") } ?? Keychain.delete(key: "tokens") }
+        set { if let newValue { Keychain.save(newValue, key: "tokens") } else { Keychain.delete(key: "tokens") } }
     }
 
     func get<T: Decodable>(_ path: String) async throws -> T {
@@ -98,7 +98,7 @@ final class APIClient {
 enum OfflineCache {
     private static var dir: URL { FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0] }
 
-    static func get<T: Codable>(_ path: String, as: T.Type = T.self) async throws -> T {
+    static func get<T: Codable>(_ path: String, as type: T.Type = T.self) async throws -> T {
         let file = dir.appendingPathComponent(path.replacingOccurrences(of: "/", with: "_") + ".json")
         do {
             let value: T = try await APIClient.shared.get(path)

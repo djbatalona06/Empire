@@ -128,7 +128,7 @@ struct TrendChart: View {
                 LineMark(x: .value("Week", r.week), y: .value("Score", r.value)).foregroundStyle(by: .value("Metric", r.metric))
                 PointMark(x: .value("Week", r.week), y: .value("Score", r.value)).foregroundStyle(by: .value("Metric", r.metric))
             }
-            .chartYScale(domain: 1...5)
+            .chartYScale(domain: 1.0...5.0)
             .frame(height: 180)
             .accessibilityLabel(Text("Check-in scores by week"))
         }
