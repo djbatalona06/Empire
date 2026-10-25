@@ -39,7 +39,7 @@ simple = { limit = 10, period = 60 }
 name = "dealerdoor-api-staging"
 vars = { ENVIRONMENT = "staging", PUBLIC_BASE_URL = "https://staging-api.example.com", APNS_TOPIC = "com.dealerdoor.app", APNS_ENV = "sandbox", EMAIL_FROM = "DealerDoor <no-reply@example.com>" }
 triggers = { crons = ["0 16 * * *"] }
-d1_databases = [{ binding = "DB", database_name = "dealerdoor-staging", database_id = "REPLACE_WITH_STAGING_D1_ID", migrations_dir = "migrations" }]
+d1_databases = [{ binding = "DB", database_name = "dealerdoor-staging", database_id = "376ebd08-bc8b-4bc8-8cf4-802830ecb24d", migrations_dir = "migrations" }]
 r2_buckets = [{ binding = "FILES", bucket_name = "dealerdoor-files-staging", jurisdiction = "us" }]
 ratelimits = [{ name = "AUTH_LIMITER", namespace_id = "1002", simple = { limit = 10, period = 60 } }]
 
