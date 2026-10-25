@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DealerDoor Admin</title>
+  <link rel="stylesheet" href="/admin.css">
+  <script src="/admin.js" defer></script>
+</head>
+<body>
+
+<!-- ===== Sign in ===== -->
+<main id="login" class="login" hidden>
+  <form id="login-form" class="card">
+    <h1>DealerDoor Admin</h1>
+    <p class="muted">Staff sign-in. We'll email you a one-time link.</p>
+    <label>Email <input name="email" type="email" required autocomplete="username"></label>
+    <details>
+      <summary>Use a password instead</summary>
+      <label>Password <input name="password" type="password" autocomplete="current-password"></label>
+    </details>
+    <button type="submit">Continue</button>
+    <p id="login-msg" class="muted" role="status"></p>
+  </form>
+</main>
+
+<!-- ===== App shell ===== -->
+<div id="app" class="shell" hidden>
+  <nav class="sidebar" aria-label="Sections">
+    <div class="brand">DealerDoor</div>
+    <a href="#overview" data-roles="lead office admin">Overview</a>
+    <a href="#review" data-roles="lead admin">Review queue</a>
+    <a href="#routes" data-roles="lead admin">Routes</a>
+    <a href="#dnk" data-roles="lead office admin">Do-not-knock</a>
+    <a href="#leads" data-roles="lead office admin">Leads</a>
+    <a href="#orders" data-roles="lead office admin">Orders</a>
+    <a href="#invoices" data-roles="office admin">Invoices</a>
+    <a href="#feedback" data-roles="lead admin">Feedback</a>
+    <a href="#scorecards" data-roles="admin">Scorecards</a>
+    <a href="#commissions" data-roles="admin">Commissions</a>
+    <a href="#catalog" data-roles="office admin">Catalog &amp; coverage</a>
+    <a href="#users" data-roles="admin">Users &amp; crews</a>
+    <a href="#settings" data-roles="lead admin">Settings</a>
+    <a href="#audit" data-roles="admin">Audit log</a>
+    <div class="me"><span id="me-name"></span><button id="logout" class="link">Sign out</button></div>
+  </nav>
+
+  <main class="content">
+    <p id="toast" class="toast" role="status" hidden></p>
+
+    <section data-view="overview">
+      <h2>Overview <small class="muted">last 90 days</small></h2>
+      <div id="metrics" class="tiles"></div>
+    </section>
+
+    <section data-view="review">
+      <h2>Review queue</h2>
+      <h3>Addresses outside SeaTac or not geocoded</h3>
+      <div data-table="review-properties"></div>
+      <h3>Offline sync conflicts</h3>
+      <div data-table="review-conflicts"></div>
+    </section>
+
+    <section data-view="routes">
+      <h2>Routes</h2>
+      <form id="route-form" class="card grid">
+        <label>Route name <input name="name" required placeholder="SeaTac North – Sat"></label>
+        <label>Coworker <select name="coworker_id" required data-options="coworkers"></select></label>
+        <label>Date <input name="route_date" type="date" required></label>
+        <label>Permit ref <input name="permit_ref" placeholder="defaults to settings value"></label>
+        <label class="wide">Addresses (one per line) <textarea name="addresses" rows="5" required placeholder="4800 S 188th St, SeaTac, WA 98188"></textarea></label>
+        <button type="submit">Assign route</button>
+        <p class="muted wide">Do-not-knock addresses are removed automatically. Out-of-area ones are kept and sent to the review queue.</p>
+      </form>
+      <div data-table="routes"></div>
+    </section>
+
+    <section data-view="dnk">
+      <h2>Do-not-knock list</h2>
+      <form id="dnk-form" class="card grid">
+        <label class="wide">Address <input name="address" required></label>
+        <label class="wide">Reason <input name="reason" placeholder="Resident request"></label>
+        <button type="submit">Add to list</button>
+      </form>
+      <div data-table="dnk"></div>
+    </section>
+
+    <section data-view="leads">
+      <h2>Leads</h2>
+      <form id="lead-filter" class="filters">
+        <input name="q" placeholder="Search name or address">
+        <select name="status">
+          <option value="">All statuses</option>
+          <option>new</option><option>interested</option><option>appointment</option>
+          <option>order</option><option>not_serviceable</option><option>closed</option>
+        </select>
+        <button type="submit">Filter</button>
+      </form>
+      <div data-table="leads"></div>
+    </section>
+
+    <section data-view="orders">
+      <h2>Orders</h2>
+      <form id="order-filter" class="filters">
+        <select name="status">
+          <option value="">All statuses</option>
+          <option>submitted</option><option>scheduled</option><option>installed</option>
+          <option>activated</option><option>closed</option><option>cancelled</option>
+        </select>
+        <button type="submit">Filter</button>
+      </form>
+      <div data-table="orders"></div>
+    </section>
+
+    <section data-view="invoices">
+      <h2>Dealer invoices</h2>
+      <p class="muted">Only dealer-billed fees (setup, wiring, activation, MDU). AT&amp;T service charges are billed by AT&amp;T.</p>
+      <div data-table="invoices"></div>
+    </section>
+
+    <section data-view="feedback">
+      <h2>Customer feedback</h2>
+      <form id="feedback-filter" class="filters">
+        <select name="status"><option>pending</option><option>approved</option><option>rejected</option></select>
+        <button type="submit">Show</button>
+      </form>
+      <div data-table="feedback"></div>
+    </section>
+
+    <section data-view="scorecards">
+      <h2>Coworker scorecards</h2>
+      <h3>Crews (pulse, 90 days)</h3>
+      <div data-table="score-crews"></div>
+      <h3>People (sales, 90 days)</h3>
+      <div data-table="score-people"></div>
+      <h3>Named pulse responses (opted in)</h3>
+      <div data-table="score-named"></div>
+    </section>
+
+    <section data-view="commissions">
+      <h2>Commissions</h2>
+      <div data-table="commissions"></div>
+    </section>
+
+    <section data-view="catalog">
+      <h2>Catalog</h2>
+      <form id="catalog-form" class="card grid">
+        <input type="hidden" name="id">
+        <label>SKU <input name="sku" required></label>
+        <label>Kind <select name="kind"><option>internet</option><option>tv</option><option>bundle</option><option>addon</option></select></label>
+        <label>Name <input name="name" required></label>
+        <label>Name (Spanish) <input name="name_es"></label>
+        <label>Speed (Mbps) <input name="speed_mbps" type="number" min="0"></label>
+        <label>Monthly price ($) <input name="monthly_price" type="number" step="0.01" min="0" required></label>
+        <label>Promo price ($) <input name="promo_price" type="number" step="0.01" min="0"></label>
+        <label>Promo months <input name="promo_months" type="number" min="0"></label>
+        <label>Contract months <input name="contract_months" type="number" min="0"></label>
+        <label>Required tech <input name="required_tech" placeholder="fiber, internet_air, or blank"></label>
+        <label>Commission ($) <input name="commission" type="number" step="0.01" min="0"></label>
+        <label>Active <select name="active"><option value="true">Yes</option><option value="false">No</option></select></label>
+        <label class="wide">Eligibility notes <input name="eligibility_notes"></label>
+        <button type="submit">Save item</button>
+      </form>
+      <div data-table="catalog"></div>
+      <h2>Coverage (serviceability)</h2>
+      <form id="coverage-form" class="card grid">
+        <label>ZIP <input name="zip" required pattern="\d{5}"></label>
+        <label>Street (optional) <input name="street" placeholder="S 188TH ST"></label>
+        <label>Technology <input name="tech" required placeholder="fiber"></label>
+        <label>Max speed (Mbps) <input name="max_speed_mbps" type="number" min="0"></label>
+        <button type="submit">Add coverage</button>
+      </form>
+      <div data-table="coverage"></div>
+    </section>
+
+    <section data-view="users">
+      <h2>Users</h2>
+      <form id="user-form" class="card grid">
+        <label>Email <input name="email" type="email" required></label>
+        <label>Name <input name="display_name" required></label>
+        <label>Role <select name="role"><option>coworker</option><option>lead</option><option>office</option><option>admin</option><option>customer</option></select></label>
+        <label>Crew <select name="crew_id" data-options="crews"><option value="">None</option></select></label>
+        <label>Language <select name="locale"><option value="en">English</option><option value="es">Español</option></select></label>
+        <button type="submit">Add user</button>
+      </form>
+      <div data-table="users"></div>
+      <h2>Crews</h2>
+      <form id="crew-form" class="card grid">
+        <label>Crew name <input name="name" required></label>
+        <label>Team lead <select name="lead_id" data-options="leads"><option value="">None</option></select></label>
+        <button type="submit">Add crew</button>
+      </form>
+      <div data-table="crews"></div>
+    </section>
+
+    <section data-view="settings">
+      <h2>Settings</h2>
+      <form id="settings-form" class="card grid">
+        <label>SeaTac solicitation permit ref <input name="solicitation_permit_ref"></label>
+        <label>Default payment terms
+          <select name="default_payment_term_days">
+            <option value="0">Due on receipt</option><option value="15">Net 15</option><option value="30">Net 30</option><option value="45">Net 45</option><option value="60">Net 60</option>
+          </select>
+        </label>
+        <label>Active consent text version <input name="active_consent_version"></label>
+        <label>Check-in geofence (meters) <input name="geofence_meters" type="number" min="25" max="500"></label>
+        <label>Close stale leads after (days) <input name="stale_lead_days" type="number" min="7" max="180"></label>
+        <button type="submit">Save settings</button>
+      </form>
+      <h3>SeaTac service area (GeoJSON Polygon)</h3>
+      <form id="area-form" class="card">
+        <textarea name="geojson" rows="6" placeholder='{"type":"Polygon","coordinates":[[[lng,lat],...]]}'></textarea>
+        <button type="submit">Replace polygon</button>
+      </form>
+    </section>
+
+    <section data-view="audit">
+      <h2>Audit log</h2>
+      <div data-table="audit"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ===== Order detail ===== -->
+<dialog id="order-dialog">
+  <form method="dialog" class="dialog-head"><h2 id="order-title">Order</h2><button class="link" aria-label="Close">✕</button></form>
+  <div id="order-summary" class="muted"></div>
+  <form id="order-edit" class="grid">
+    <label>AT&amp;T order ref <input name="att_order_ref"></label>
+    <label>Cancel reason <input name="cancelled_reason" placeholder="only to cancel"></label>
+    <button type="submit">Save</button>
+    <button type="button" id="order-cancel" class="danger">Cancel order</button>
+  </form>
+  <h3>Timeline</h3>
+  <div id="order-timeline"></div>
+  <h3>New dealer invoice</h3>
+  <form id="invoice-form" class="grid">
+    <label class="wide">Description <input name="description" required placeholder="MDU wiring / activation fee"></label>
+    <label>Amount ($) <input name="amount" type="number" step="0.01" min="1" required></label>
+    <label>Terms
+      <select name="payment_term_days">
+        <option value="0">Due on receipt</option><option value="15">Net 15</option><option value="30" selected>Net 30</option><option value="45">Net 45</option><option value="60">Net 60</option>
+      </select>
+    </label>
+    <label class="check"><input type="checkbox" name="send" checked> Send now</label>
+    <button type="submit">Create invoice</button>
+  </form>
+</dialog>
+
+<template id="stage-row">
+  <form class="stage">
+    <strong class="stage-name"></strong>
+    <select name="status"><option>pending</option><option>in_progress</option><option>complete</option><option>delayed</option></select>
+    <input name="at" type="datetime-local" title="Install date (install_scheduled only)" hidden>
+    <input name="note_customer" placeholder="Note for customer">
+    <input name="note_internal" placeholder="Internal note">
+    <button type="submit">Update</button>
+  </form>
+</template>
+
+</body>
+</html>

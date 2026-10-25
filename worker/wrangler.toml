@@ -1,0 +1,65 @@
+name = "dealerdoor-api"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Admin console (static HTML/CSS/JS). API + well-known paths always hit the Worker first.
+[assets]
+directory = "../admin"
+run_worker_first = ["/v1/*", "/.well-known/*", "/auth/*"]
+
+[triggers]
+# 16:00 UTC = 9 AM Pacific (daylight) / 8 AM (standard): reminders never go out after hours.
+crons = ["0 16 * * *"]
+
+[vars]
+ENVIRONMENT = "development"
+PUBLIC_BASE_URL = "http://localhost:8787"
+APNS_TOPIC = "com.dealerdoor.app"
+APNS_ENV = "sandbox"
+EMAIL_FROM = "DealerDoor <no-reply@example.com>"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "dealerdoor-dev"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "dealerdoor-files-dev"
+
+[[ratelimits]]
+name = "AUTH_LIMITER"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
+
+# ---- Staging ---------------------------------------------------------------
+[env.staging]
+name = "dealerdoor-api-staging"
+vars = { ENVIRONMENT = "staging", PUBLIC_BASE_URL = "https://staging-api.example.com", APNS_TOPIC = "com.dealerdoor.app", APNS_ENV = "sandbox", EMAIL_FROM = "DealerDoor <no-reply@example.com>" }
+triggers = { crons = ["0 16 * * *"] }
+d1_databases = [{ binding = "DB", database_name = "dealerdoor-staging", database_id = "REPLACE_WITH_STAGING_D1_ID", migrations_dir = "migrations" }]
+r2_buckets = [{ binding = "FILES", bucket_name = "dealerdoor-files-staging", jurisdiction = "us" }]
+ratelimits = [{ name = "AUTH_LIMITER", namespace_id = "1002", simple = { limit = 10, period = 60 } }]
+
+# ---- Production ------------------------------------------------------------
+[env.production]
+name = "dealerdoor-api"
+vars = { ENVIRONMENT = "production", PUBLIC_BASE_URL = "https://api.example.com", APNS_TOPIC = "com.dealerdoor.app", APNS_ENV = "production", EMAIL_FROM = "DealerDoor <no-reply@example.com>" }
+triggers = { crons = ["0 16 * * *"] }
+d1_databases = [{ binding = "DB", database_name = "dealerdoor-prod", database_id = "REPLACE_WITH_PROD_D1_ID", migrations_dir = "migrations" }]
+r2_buckets = [{ binding = "FILES", bucket_name = "dealerdoor-files-prod", jurisdiction = "us" }]
+ratelimits = [{ name = "AUTH_LIMITER", namespace_id = "1003", simple = { limit = 10, period = 60 } }]
+
+# Secrets (wrangler secret put <NAME> --env <env>):
+#   JWT_SECRET          random 64+ chars; signs access tokens, file URLs, pulse hashes
+#   RESEND_API_KEY      email delivery for magic links + invoice notices
+#   STRIPE_SECRET_KEY   payment processor (card + ACH)
+#   STRIPE_PUBLISHABLE_KEY
+#   STRIPE_WEBHOOK_SECRET
+#   APNS_KEY_P8 / APNS_KEY_ID / APNS_TEAM_ID   push notifications
+#
+# Data residency (set at creation, cannot be changed later):
+#   npx wrangler d1 create dealerdoor-prod --jurisdiction=us
+#   npx wrangler r2 bucket create dealerdoor-files-prod --jurisdiction=us
