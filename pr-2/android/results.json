@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "test": "customerTour",
+    "result": "Failed",
+    "failure": "androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 15000 ms"
+  },
+  {
+    "test": "loginNeedsAnEmail",
+    "result": "Passed",
+    "failure": ""
+  },
+  {
+    "test": "coworkerTour",
+    "result": "Failed",
+    "failure": "androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 15000 ms"
+  }
+]
