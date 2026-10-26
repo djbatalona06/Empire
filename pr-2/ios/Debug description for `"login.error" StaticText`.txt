@@ -1,4 +1,0 @@
-Query chain:
- →Find: Target Application 'com.dealerdoor.app'
-  ↪︎Find: Descendants matching type StaticText
-    ↪︎Find: Elements matching predicate '"login.error" IN identifiers'

@@ -1,4 +1,0 @@
-Query chain:
- →Find: Target Application 'com.dealerdoor.app'
-  ↪︎Find: Descendants matching type NavigationBar
-    ↪︎Find: Elements matching predicate '"Leads" IN identifiers'
