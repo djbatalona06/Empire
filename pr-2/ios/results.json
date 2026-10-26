@@ -1,0 +1,17 @@
+[
+  {
+    "test": "testCoworkerTour()",
+    "result": "Failed",
+    "failure": "SmokeTests.swift:53: XCTAssertTrue failed"
+  },
+  {
+    "test": "testCustomerTour()",
+    "result": "Passed",
+    "failure": ""
+  },
+  {
+    "test": "testLoginNeedsAnEmail()",
+    "result": "Passed",
+    "failure": ""
+  }
+]
