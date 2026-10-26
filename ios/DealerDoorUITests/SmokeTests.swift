@@ -30,7 +30,7 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Demo route"].waitForExistence(timeout: 20), "seeded route r1 should load")
         snap("01-coworker-route")
 
-        let pulse = app.buttons["Weekly check-in: 3 quick questions"]
+        let pulse = app.buttons["Weekly check-in: 3 quick questions"].firstMatch
         if pulse.waitForExistence(timeout: 5) {
             pulse.tap()
             XCTAssertTrue(app.navigationBars["Weekly check-in"].waitForExistence(timeout: 10))
@@ -47,17 +47,19 @@ final class SmokeTests: XCTestCase {
             XCTAssertTrue(app.navigationBars["New lead"].waitForExistence(timeout: 10))
             snap("04-coworker-lead-from-door")
             app.buttons["Cancel"].tap()
+            // Both sheets (lead form, then the door sheet) animate away before the tab bar takes taps again.
+            XCTAssertTrue(app.navigationBars["Door"].waitForNonExistence(timeout: 10))
         }
 
-        app.tabBars.buttons["Leads"].tap()
-        XCTAssertTrue(app.navigationBars["Leads"].waitForExistence(timeout: 10))
+        openTab("Leads")
         snap("05-coworker-leads")
         app.buttons["New lead"].tap()
         XCTAssertTrue(app.navigationBars["New lead"].waitForExistence(timeout: 10))
         snap("06-coworker-new-lead")
         app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars["New lead"].waitForNonExistence(timeout: 10))
 
-        app.tabBars.buttons["Me"].tap()
+        openTab("Me", title: "My scorecard")
         snap("07-coworker-scorecard")
     }
 
@@ -86,6 +88,16 @@ final class SmokeTests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    /// Taps a tab and waits for its screen; taps once more if a closing sheet swallowed the first tap.
+    private func openTab(_ tab: String, title: String? = nil) {
+        let bar = app.navigationBars[title ?? tab]
+        for _ in 0..<2 {
+            app.tabBars.buttons[tab].tap()
+            if bar.waitForExistence(timeout: 5) { return }
+        }
+        XCTFail("\(tab) tab did not open")
+    }
 
     private func signIn(_ email: String) {
         let field = app.textFields["login.email"]

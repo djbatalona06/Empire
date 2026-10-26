@@ -19,6 +19,9 @@ with tempfile.TemporaryDirectory() as tmp:
     for test in manifest:
         for a in test.get("attachments", []):
             name = re.sub(r"_\d+_[0-9A-F-]{36}", "", a["suggestedHumanReadableName"], flags=re.I)
+            # Keep our screenshots and Xcode's text diagnostics; skip screen recordings and event dumps.
+            if not (name.endswith((".png", ".txt")) or name.startswith("App UI hierarchy")):
+                continue
             shutil.copy(pathlib.Path(tmp, a["exportedFileName"]), out / name)
 
 # Per-test results

@@ -88,7 +88,7 @@ object Api {
             val payload = if (method == "GET") null else (body ?: emptyMap()).toJson().toString().toRequestBody(jsonType)
             builder.method(method, payload)
 
-            val (status, text) = http.newCall(builder.build()).execute().use { it.code to it.body.string() }
+            val (status, text) = http.newCall(builder.build()).execute().use { it.code to it.body?.string().orEmpty() }
 
             if (status == 401 && !retried && !path.startsWith("auth/")) {
                 val refresh = TokenStore.tokens?.refreshToken

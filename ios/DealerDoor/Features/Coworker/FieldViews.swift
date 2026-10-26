@@ -9,23 +9,12 @@ struct CoworkerHomeView: View {
 
     var body: some View {
         TabView {
-            NavigationStack { RouteMapView() }
+            NavigationStack { RouteMapView().pulseBanner(pulseDue) { showPulse = true } }
                 .tabItem { Label("Route", systemImage: "map") }
-            NavigationStack { LeadsView() }
+            NavigationStack { LeadsView().pulseBanner(pulseDue) { showPulse = true } }
                 .tabItem { Label("Leads", systemImage: "person.2") }
-            NavigationStack { ScorecardView() }
+            NavigationStack { ScorecardView().pulseBanner(pulseDue) { showPulse = true } }
                 .tabItem { Label("Me", systemImage: "chart.line.uptrend.xyaxis") }
-        }
-        // Weekly pulse is an in-app banner, never an after-hours push (spec 4.6).
-        .safeAreaInset(edge: .top) {
-            if pulseDue {
-                Button { showPulse = true } label: {
-                    Label("Weekly check-in: 3 quick questions", systemImage: "heart.text.square")
-                        .font(.subheadline.bold()).frame(maxWidth: .infinity).padding(10)
-                        .background(.tint.opacity(0.15))
-                }
-                .buttonStyle(.plain)
-            }
         }
         .sheet(isPresented: $showPulse) { PulseView { pulseDue = false } }
         .task {
@@ -33,6 +22,23 @@ struct CoworkerHomeView: View {
             sync.refreshCounts()
             await sync.flush()
             pulseDue = ((try? await APIClient.shared.get("pulse/status") as PulseStatus)?.due) ?? false
+        }
+    }
+}
+
+private extension View {
+    /// Weekly pulse is an in-app banner, never an after-hours push (spec 4.6).
+    /// Applied inside each NavigationStack so it sits under the title instead of on top of it.
+    func pulseBanner(_ due: Bool, open: @escaping () -> Void) -> some View {
+        safeAreaInset(edge: .top, spacing: 0) {
+            if due {
+                Button(action: open) {
+                    Label("Weekly check-in: 3 quick questions", systemImage: "heart.text.square")
+                        .font(.subheadline.bold()).frame(maxWidth: .infinity).padding(10)
+                        .background(.tint.opacity(0.15))
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 }
