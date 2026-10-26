@@ -18,27 +18,27 @@
     "maxFailures": 0,
     "metadata": {
       "ci": {
-        "commitHref": "https://github.com/djbatalona06/Empire/commit/adc5b268954a94ab32c7bd91f82c3c885559cd96",
-        "commitHash": "adc5b268954a94ab32c7bd91f82c3c885559cd96",
+        "commitHref": "https://github.com/djbatalona06/Empire/commit/b7d8a41c5233279174c85d9467cbfacf2d5ff506",
+        "commitHash": "b7d8a41c5233279174c85d9467cbfacf2d5ff506",
         "prHref": "https://github.com/djbatalona06/Empire/pull/2",
         "prTitle": "Robot testers for the iPhone app, the Android app, and the admin website",
         "prBaseHash": "326ddc5fe79b1743ccf9bb4a692ac868e3727da8",
-        "buildHref": "https://github.com/djbatalona06/Empire/actions/runs/40255711304"
+        "buildHref": "https://github.com/djbatalona06/Empire/actions/runs/40256318202"
       },
       "gitCommit": {
-        "shortHash": "adc5b26",
-        "hash": "adc5b268954a94ab32c7bd91f82c3c885559cd96",
-        "subject": "Merge 8ef1dde4f84da80eab4bfa6447472ab0c9179221 into 326ddc5fe79b1743ccf9bb4a692ac868e3727da8",
-        "body": "Merge 8ef1dde4f84da80eab4bfa6447472ab0c9179221 into 326ddc5fe79b1743ccf9bb4a692ac868e3727da8\n",
+        "shortHash": "b7d8a41",
+        "hash": "b7d8a41c5233279174c85d9467cbfacf2d5ff506",
+        "subject": "Merge 3c0d8880ae740bfd8cbe5a55dc1269dc32e6a249 into 326ddc5fe79b1743ccf9bb4a692ac868e3727da8",
+        "body": "Merge 3c0d8880ae740bfd8cbe5a55dc1269dc32e6a249 into 326ddc5fe79b1743ccf9bb4a692ac868e3727da8\n",
         "author": {
           "name": "DJ BATALONA",
           "email": "batalona06@gmail.com",
-          "time": 1792979086000
+          "time": 1792979546000
         },
         "committer": {
           "name": "GitHub",
           "email": "noreply@github.com",
-          "time": 1792979086000
+          "time": 1792979546000
         },
         "branch": "HEAD"
       },
@@ -53,27 +53,27 @@
         "retries": 0,
         "metadata": {
           "ci": {
-            "commitHref": "https://github.com/djbatalona06/Empire/commit/adc5b268954a94ab32c7bd91f82c3c885559cd96",
-            "commitHash": "adc5b268954a94ab32c7bd91f82c3c885559cd96",
+            "commitHref": "https://github.com/djbatalona06/Empire/commit/b7d8a41c5233279174c85d9467cbfacf2d5ff506",
+            "commitHash": "b7d8a41c5233279174c85d9467cbfacf2d5ff506",
             "prHref": "https://github.com/djbatalona06/Empire/pull/2",
             "prTitle": "Robot testers for the iPhone app, the Android app, and the admin website",
             "prBaseHash": "326ddc5fe79b1743ccf9bb4a692ac868e3727da8",
-            "buildHref": "https://github.com/djbatalona06/Empire/actions/runs/40255711304"
+            "buildHref": "https://github.com/djbatalona06/Empire/actions/runs/40256318202"
           },
           "gitCommit": {
-            "shortHash": "adc5b26",
-            "hash": "adc5b268954a94ab32c7bd91f82c3c885559cd96",
-            "subject": "Merge 8ef1dde4f84da80eab4bfa6447472ab0c9179221 into 326ddc5fe79b1743ccf9bb4a692ac868e3727da8",
-            "body": "Merge 8ef1dde4f84da80eab4bfa6447472ab0c9179221 into 326ddc5fe79b1743ccf9bb4a692ac868e3727da8\n",
+            "shortHash": "b7d8a41",
+            "hash": "b7d8a41c5233279174c85d9467cbfacf2d5ff506",
+            "subject": "Merge 3c0d8880ae740bfd8cbe5a55dc1269dc32e6a249 into 326ddc5fe79b1743ccf9bb4a692ac868e3727da8",
+            "body": "Merge 3c0d8880ae740bfd8cbe5a55dc1269dc32e6a249 into 326ddc5fe79b1743ccf9bb4a692ac868e3727da8\n",
             "author": {
               "name": "DJ BATALONA",
               "email": "batalona06@gmail.com",
-              "time": 1792979086000
+              "time": 1792979546000
             },
             "committer": {
               "name": "GitHub",
               "email": "noreply@github.com",
-              "time": 1792979086000
+              "time": 1792979546000
             },
             "branch": "HEAD"
           },
@@ -95,27 +95,27 @@
         "retries": 0,
         "metadata": {
           "ci": {
-            "commitHref": "https://github.com/djbatalona06/Empire/commit/adc5b268954a94ab32c7bd91f82c3c885559cd96",
-            "commitHash": "adc5b268954a94ab32c7bd91f82c3c885559cd96",
+            "commitHref": "https://github.com/djbatalona06/Empire/commit/b7d8a41c5233279174c85d9467cbfacf2d5ff506",
+            "commitHash": "b7d8a41c5233279174c85d9467cbfacf2d5ff506",
             "prHref": "https://github.com/djbatalona06/Empire/pull/2",
             "prTitle": "Robot testers for the iPhone app, the Android app, and the admin website",
             "prBaseHash": "326ddc5fe79b1743ccf9bb4a692ac868e3727da8",
-            "buildHref": "https://github.com/djbatalona06/Empire/actions/runs/40255711304"
+            "buildHref": "https://github.com/djbatalona06/Empire/actions/runs/40256318202"
           },
           "gitCommit": {
-            "shortHash": "adc5b26",
-            "hash": "adc5b268954a94ab32c7bd91f82c3c885559cd96",
-            "subject": "Merge 8ef1dde4f84da80eab4bfa6447472ab0c9179221 into 326ddc5fe79b1743ccf9bb4a692ac868e3727da8",
-            "body": "Merge 8ef1dde4f84da80eab4bfa6447472ab0c9179221 into 326ddc5fe79b1743ccf9bb4a692ac868e3727da8\n",
+            "shortHash": "b7d8a41",
+            "hash": "b7d8a41c5233279174c85d9467cbfacf2d5ff506",
+            "subject": "Merge 3c0d8880ae740bfd8cbe5a55dc1269dc32e6a249 into 326ddc5fe79b1743ccf9bb4a692ac868e3727da8",
+            "body": "Merge 3c0d8880ae740bfd8cbe5a55dc1269dc32e6a249 into 326ddc5fe79b1743ccf9bb4a692ac868e3727da8\n",
             "author": {
               "name": "DJ BATALONA",
               "email": "batalona06@gmail.com",
-              "time": 1792979086000
+              "time": 1792979546000
             },
             "committer": {
               "name": "GitHub",
               "email": "noreply@github.com",
-              "time": 1792979086000
+              "time": 1792979546000
             },
             "branch": "HEAD"
           },
@@ -185,12 +185,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 539,
+                  "duration": 820,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-26T01:45:33.551Z",
+                  "startTime": "2026-10-26T01:55:05.885Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -227,12 +227,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2533,
+                  "duration": 2913,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-26T01:45:34.140Z",
+                  "startTime": "2026-10-26T01:55:06.748Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -261,12 +261,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3775,
+                  "duration": 3669,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-26T01:45:37.518Z",
+                  "startTime": "2026-10-26T01:55:10.401Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -284,8 +284,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-10-26T01:45:25.490Z",
-    "duration": 16065.215999999999,
+    "startTime": "2026-10-26T01:54:56.963Z",
+    "duration": 17329.261,
     "expected": 3,
     "skipped": 0,
     "unexpected": 0,
