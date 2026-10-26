@@ -27,7 +27,8 @@ Status key: ✅ built in this repo · 🧪 verified by automated test or browser
 
 - ✅ Login (magic link / password), Face ID unlock, push registration + deep links
 - ✅ Dashboard, order timeline, invoices + PaymentSheet, feedback tab with photo
-- 🙋 First Xcode build on a Mac (CI compiles it on every PR: `.github/workflows/ios.yml`)
+- ✅🧪 UI tests tap through every screen in an iPhone simulator on each PR and save screenshots (`ios/DealerDoorUITests`, `.github/workflows/ios.yml`)
+- 🙋 First Xcode build on your own Mac: follow [08-MAC-XCODE-SETUP.md](08-MAC-XCODE-SETUP.md)
 
 ## Phase 5 · Coworker iOS (weeks 8–11)
 

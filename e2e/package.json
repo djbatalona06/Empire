@@ -1,0 +1,13 @@
+{
+  "name": "dealerdoor-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "seed:customer": "playwright test 01-app-contract --project desktop",
+    "gallery": "node gallery.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

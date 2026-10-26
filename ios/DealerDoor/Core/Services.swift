@@ -30,6 +30,15 @@ enum Keychain {
 
 // MARK: Auth
 
+/// UI tests launch with `-uitest`: start signed out and skip the system permission prompts (CI pre-grants location).
+enum UITest {
+    #if DEBUG
+    static let enabled = ProcessInfo.processInfo.arguments.contains("-uitest")
+    #else
+    static let enabled = false
+    #endif
+}
+
 @MainActor @Observable
 final class AuthStore {
     enum State: Equatable { case loading, signedOut, locked, signedIn(Me) }
@@ -38,6 +47,10 @@ final class AuthStore {
     var me: Me? { if case .signedIn(let m) = state { m } else { nil } }
 
     init() {
+        if UITest.enabled {
+            APIClient.shared.tokens = nil
+            OfflineCache.clear()
+        }
         // Returning users unlock with Face ID / passcode instead of a new magic link.
         state = APIClient.shared.tokens == nil ? .signedOut : .locked
         NotificationCenter.default.addObserver(forName: .sessionExpired, object: nil, queue: .main) { [weak self] _ in
@@ -86,7 +99,7 @@ final class AuthStore {
         // Keep server-side push/email language in sync with the device.
         let lang = Locale.current.language.languageCode?.identifier == "es" ? "es" : "en"
         if me.locale != lang { try? await APIClient.shared.send("PATCH", "me", ["locale": lang]) }
-        PushManager.requestAuthorization()
+        if !UITest.enabled { PushManager.requestAuthorization() }
     }
 
     func signOut() async {
@@ -174,7 +187,7 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
     }
 
     func start() {
-        manager.requestWhenInUseAuthorization()
+        if !UITest.enabled { manager.requestWhenInUseAuthorization() }
         manager.startUpdatingLocation()
     }
 
