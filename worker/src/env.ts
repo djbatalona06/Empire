@@ -18,6 +18,7 @@ export interface Env {
   APNS_KEY_P8?: string;
   APNS_KEY_ID?: string;
   APNS_TEAM_ID?: string;
+  ANDROID_CERT_SHA256?: string;
 }
 
 export type Role = 'customer' | 'coworker' | 'lead' | 'office' | 'admin';

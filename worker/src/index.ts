@@ -22,10 +22,23 @@ app.get('/v1/health', (c) => c.json({ ok: true, env: c.env.ENVIRONMENT }));
 app.route('/v1/auth', auth);
 for (const r of [me, field, orders, files, invoices, feedback, admin]) app.route('/v1', r);
 
-// Magic links open the iOS app via universal links; on a desktop they land in the admin console.
+// Magic links open the iOS app (universal links) or the Android app (App Links); on a desktop they land in the admin console.
 app.get('/auth/verify', (c) => c.redirect(`/#magic=${encodeURIComponent(c.req.query('token') ?? '')}`));
 app.get('/.well-known/apple-app-site-association', (c) =>
   c.json({ applinks: { details: [{ appIDs: [`${c.env.APNS_TEAM_ID ?? 'TEAMID'}.${c.env.APNS_TOPIC}`], components: [{ '/': '/auth/verify*' }] }] } }),
+);
+// ANDROID_CERT_SHA256: comma-separated signing-certificate fingerprints (Play Console → App integrity).
+app.get('/.well-known/assetlinks.json', (c) =>
+  c.json(
+    (c.env.ANDROID_CERT_SHA256 ?? '').split(',').filter(Boolean).length
+      ? [
+          {
+            relation: ['delegate_permission/common.handle_all_urls'],
+            target: { namespace: 'android_app', package_name: c.env.APNS_TOPIC, sha256_cert_fingerprints: c.env.ANDROID_CERT_SHA256!.split(',').map((s) => s.trim()) },
+          },
+        ]
+      : [],
+  ),
 );
 
 app.notFound((c) => c.json({ error: 'not_found' }, 404));

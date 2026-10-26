@@ -4,6 +4,7 @@ import { exports } from 'cloudflare:workers';
 const worker = (exports as unknown as { default: Fetcher }).default;
 import { describe, expect, it } from 'vitest';
 import { reminderFor, runDaily } from '../src/cron';
+import handler from '../src/index';
 import { hmac } from '../src/lib/crypto';
 import { pointInArea } from '../src/lib/geo';
 import { addDays, isoWeek, todayPacific } from '../src/lib/util';
@@ -125,6 +126,16 @@ describe('auth', () => {
     const customer = await user('customer');
     expect((await api('/v1/leads', { token: customer.token })).status).toBe(403);
     expect((await api('/v1/admin/audit', { token: (await user('coworker')).token })).status).toBe(403);
+  });
+});
+
+describe('app links', () => {
+  it('publishes Android asset links only when a signing fingerprint is configured', async () => {
+    expect((await api('/.well-known/assetlinks.json')).body).toEqual([]);
+    const withCert = await handler.fetch(new Request('http://dealerdoor.test/.well-known/assetlinks.json'), { ...env, ANDROID_CERT_SHA256: 'AA:BB, CC:DD' } as never, {} as never);
+    expect(await withCert.json()).toEqual([
+      { relation: ['delegate_permission/common.handle_all_urls'], target: { namespace: 'android_app', package_name: 'com.dealerdoor.app', sha256_cert_fingerprints: ['AA:BB', 'CC:DD'] } },
+    ]);
   });
 });
 
