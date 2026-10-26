@@ -37,6 +37,15 @@ Status key: ✅ built in this repo · 🧪 verified by automated test or browser
 - ✅ Serviceability, appointment, order submit
 - ✅ Weekly pulse banner, scorecard with Swift Charts, kudos
 
+## Phase 5b · Android app
+
+- ✅ Same customer and coworker screens as iOS in Kotlin + Jetpack Compose (`android/`), English + Spanish
+- ✅ Offline queue, Keystore-encrypted session, fingerprint/screen-lock unlock, Stripe PaymentSheet, OpenStreetMap route map
+- ✅🧪 CI builds, lints and unit-tests it, then taps through every screen in an emulator and saves screenshots (`.github/workflows/android.yml`)
+- 🙋 Google Play developer account → upload the release build to an internal / closed testing track
+- 🙋 App Links: set `ANDROID_CERT_SHA256` (wrangler var) and build with `-PappLinkHost=<your api domain>` so sign-in emails open the app
+- 🙋 Push on Android: needs a Firebase project (FCM). Until then Android customers get email updates.
+
 ## Phase 6 · Admin dashboard (weeks 10–12)
 
 - ✅🧪 Web console served by the Worker: overview metrics, review queue, routes, DNK, leads, orders/timeline, invoices, feedback moderation, scorecards, commissions, catalog/coverage, users/crews, settings, audit (browser-tested at desktop and phone width)

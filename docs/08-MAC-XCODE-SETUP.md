@@ -1,29 +1,31 @@
-# 08 · Mac + Xcode setup (and how Claude sees the iOS app)
+# 08 · Mac setup for the iPhone and Android apps (and how Claude sees them)
 
-One-time setup for the MacBook, about 45 minutes. You do this part. After it, Claude can build and check the iPhone app two ways.
+One-time setup for the MacBook, about 45 minutes (plus 15 for Android). You do this part. After it, Claude can build and check both apps two ways.
 
 ## How the bridge works
 
 ```
                  ┌──────────── Lane 1: cloud (always on) ────────────┐
- Claude (cloud) ─┤ push code → GitHub Mac runner:                     │
+ Claude (cloud) ─┤ push code → GitHub runners (Mac + Linux):          │
       ▲          │   start local API → seed demo data (Playwright)    │
-      │          │   → iPhone simulator → tap every screen (XCUITest) │
+      │          │   → iPhone simulator + Android emulator            │
+      │          │   → tap every screen (XCUITest / Compose tests)    │
       │          │   → screenshots → ci-shots branch + PR checks      │
       └──────────┤ ← Claude reads logs + screenshots, fixes, pushes   │
                  └────────────────────────────────────────────────────┘
 
                  ┌──────────── Lane 2: your Mac (when it is open) ────┐
  Claude Code  ───┤ XcodeBuildMCP → Xcode + simulator on your Mac      │
- (on the Mac)    │ build, run, tap, screenshot, read logs, live       │
+ (on the Mac)    │ Gradle + adb  → Android emulator on your Mac       │
+                 │ build, run, tap, screenshot, read logs, live       │
                  └────────────────────────────────────────────────────┘
 ```
 
-- **Lane 1** is the main one. Each pull request runs `.github/workflows/ios.yml` (app) and `.github/workflows/worker.yml` (API + admin console in a real browser). Screenshots land on the `ci-shots` branch under `pr-<number>/ios`, `pr-<number>/admin-desktop` and `pr-<number>/admin-phone`.
+- **Lane 1** is the main one. Each pull request runs `.github/workflows/ios.yml` (iPhone simulator), `.github/workflows/android.yml` (Android emulator) and `.github/workflows/worker.yml` (API + admin console in a real browser). Screenshots land on the `ci-shots` branch under `pr-<number>/ios`, `pr-<number>/android`, `pr-<number>/admin-desktop` and `pr-<number>/admin-phone`.
 - **Lane 2** is for fast, hands-on work. A Claude Code session running *on your Mac* drives the simulator directly.
-- Neither lane needs a paid Apple Developer account. You only need one to put the app on a real iPhone or TestFlight (Phase 7).
+- Neither lane needs a paid Apple Developer or Google Play account. You need those only to ship to real users (Phase 5b and 7).
 
-## 1 · Xcode
+## 1 · Xcode (iPhone app)
 
 1. Mac App Store → install **Xcode** (26 or newer). Open it once and accept the license. When asked which platforms to install, pick **iOS**.
 2. Terminal:
@@ -97,9 +99,25 @@ Then ask: *"Build DealerDoor for the iPhone simulator, run it, sign in as rep1@d
 - Optional: newer Xcode versions also ship their own MCP bridge (`xcrun mcpbridge`). Try `claude mcp add xcode -- xcrun mcpbridge`. If the command isn't found, your Xcode doesn't have it yet, and XcodeBuildMCP covers everything.
 - Optional: turn on **Remote Control** in that session to steer it from your phone.
 
-## 7 · Watching progress
+## 7 · Android on the Mac (Android Studio)
 
-- **PR checks**: `iOS app / ui-tests` and `Worker API / e2e` show ✅ or ❌. The run's **Summary** tab has a pass/fail table.
+1. Install **Android Studio** from https://developer.android.com/studio. Open it once and let the setup wizard install the Android SDK and an emulator (a "Medium Phone" on API 34 or newer is fine).
+2. **File → Open** → choose the `android` folder inside `Empire`. Let Gradle sync finish (first time takes a few minutes).
+3. Keep the API from step 4 running. Pick the emulator at the top and press **▶ Run**. Sign in as `rep1@dealerdoor.test` or `customer@dealerdoor.test`, same as on iPhone.
+   The emulator reaches your Mac at `10.0.2.2:8787`. That address is already set for debug builds.
+4. To put the location at SeaTac: emulator **⋯ → Location**, search "SeaTac City Hall", **Set location**.
+5. Run the UI tests: right-click `app/src/androidTest` → **Run 'Tests in…'**, or in Terminal:
+   ```bash
+   cd android && ./gradlew connectedDebugAndroidTest
+   ```
+6. On a real Android phone (USB debugging on, same Wi-Fi as the Mac):
+   ```bash
+   ./gradlew installDebug -PapiBaseUrl=http://<your-mac-ip>:8787
+   ```
+
+## 8 · Watching progress
+
+- **PR checks**: `iOS app / ui-tests`, `Android app / ui-tests` and `Worker API / e2e` show ✅ or ❌. The run's **Summary** tab has a pass/fail table.
 - **Screenshots**: on GitHub, switch the branch picker to `ci-shots`. Claude also publishes a private "DealerDoor Build Progress" page after each round.
 
 ## Troubleshooting
@@ -111,3 +129,5 @@ Then ask: *"Build DealerDoor for the iPhone simulator, run it, sign in as rep1@d
 | `xcodegen: command not found` | `brew install xcodegen` |
 | Customer tab is empty | `cd e2e && npm run seed:customer` |
 | Build error about signing | You picked a real iPhone. Pick a simulator until you have an Apple Developer account. |
+| Android app says "Couldn't load" | The API isn't running, or (on a real phone) you didn't pass `-PapiBaseUrl` with your Mac's IP. |
+| Android Studio: "SDK location not found" | Open the `android` folder (not `Empire`) so Studio writes `local.properties`. |

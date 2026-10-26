@@ -1,7 +1,7 @@
 # 01 · PRD: Product Requirements
 
-**Product:** DealerDoor, a native iOS app for a third-party AT&T authorized dealer selling internet, TV and bundles door-to-door in **SeaTac, WA**.
-**Distribution:** App Store, set to **Unlisted** (only people with the direct link can install).
+**Product:** DealerDoor, native iOS and Android apps for a third-party AT&T authorized dealer selling internet, TV and bundles door-to-door in **SeaTac, WA**.
+**Distribution:** App Store, set to **Unlisted**, and Google Play (unlisted / internal testing track). Only people with the direct link can install.
 **Operator:** The dealer, not AT&T.
 
 ## Problem
@@ -45,7 +45,6 @@ Door-to-door sales today run on paper, texts and spreadsheets. Leads get lost, c
 
 - Processing AT&T recurring service charges (AT&T bills those; the app says so on every money screen).
 - Real-time AT&T order system integration (office enters install dates and order refs).
-- Android.
 - Commission payouts (we estimate and reconcile; payroll pays).
 
 ## Compliance guardrails
