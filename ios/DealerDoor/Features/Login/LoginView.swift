@@ -26,13 +26,14 @@ struct LoginView: View {
                         .textContentType(.username)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    Toggle("Sign in with a password", isOn: $usePassword)
+                        .accessibilityIdentifier("login.email")
+                    Toggle("Sign in with a password", isOn: $usePassword).accessibilityIdentifier("login.usePassword")
                     if usePassword {
                         SecureField("Password", text: $password).textContentType(.password)
                     }
                 } footer: {
                     if let message { Text(message) }
-                    if let errorText { Text(errorText).foregroundStyle(.red) }
+                    if let errorText { Text(errorText).foregroundStyle(.red).accessibilityIdentifier("login.error") }
                 }
                 Button {
                     Task { await submit() }
@@ -40,6 +41,7 @@ struct LoginView: View {
                     HStack { Spacer(); if busy { ProgressView() } else { Text(usePassword ? LocalizedStringKey("Sign in") : "Email me a sign-in link").bold() }; Spacer() }
                 }
                 .disabled(busy || !email.contains("@"))
+                .accessibilityIdentifier("login.submit")
             }
             .navigationTitle("Sign in")
         }

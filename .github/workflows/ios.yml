@@ -2,10 +2,11 @@ name: iOS app
 
 on:
   pull_request:
-    paths: ["ios/**", ".github/workflows/ios.yml"]
+    paths: ["ios/**", "worker/**", "e2e/**", "ci/**", ".github/workflows/ios.yml"]
   push:
     branches: [main]
-    paths: ["ios/**", ".github/workflows/ios.yml"]
+    paths: ["ios/**", "worker/**", "e2e/**", "ci/**", ".github/workflows/ios.yml"]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -24,3 +25,81 @@ jobs:
             CODE_SIGNING_ALLOWED=NO build > build.log 2>&1 \
             || { grep -E ": error:" build.log | sort -u; tail -20 build.log; exit 1; }
           grep -E ": warning:" build.log | grep "/DealerDoor/" | sort -u || true
+
+  # Runs the app in an iPhone simulator against the local API, taps through each screen and saves screenshots.
+  ui-tests:
+    runs-on: macos-15
+    timeout-minutes: 45
+    permissions:
+      contents: write   # push screenshots to the ci-shots branch
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            worker/package-lock.json
+            e2e/package-lock.json
+      - run: npm ci
+        working-directory: worker
+      - run: npm ci
+        working-directory: e2e
+      - run: brew install xcodegen
+
+      - name: Start local API
+        run: |
+          nohup e2e/start-api.sh > api.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null localhost:8787/ && break; sleep 2; done
+          curl -sf -o /dev/null localhost:8787/ || { tail -50 api.log; exit 1; }
+
+      - name: Seed demo customer (Playwright API flow)
+        working-directory: e2e
+        run: npm run seed:customer
+
+      - name: Boot simulator at SeaTac
+        run: |
+          UDID=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | test("^iPhone [0-9]+( Pro)?$"))] | last | .udid')
+          echo "Using $(xcrun simctl list devices | grep "$UDID")"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b > /dev/null
+          xcrun simctl privacy "$UDID" grant location com.dealerdoor.app || true
+          xcrun simctl location "$UDID" set 47.437,-122.277 || true
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Run UI tests
+        working-directory: ios
+        run: |
+          xcodegen
+          set +e
+          xcodebuild test -project DealerDoor.xcodeproj -scheme DealerDoor \
+            -destination "id=$UDID" -resultBundlePath TestResults.xcresult > test.log 2>&1
+          status=$?
+          set -e
+          grep -E ": error:|Test Case .*(passed|failed)|: XCTAssert|Testing failed" test.log | sort -u || true
+          [ $status -eq 0 ] || tail -30 test.log
+          echo "TEST_STATUS=$status" >> "$GITHUB_ENV"
+
+      - name: Export screenshots
+        if: always() && hashFiles('ios/TestResults.xcresult/Info.plist') != ''
+        run: python3 ios/scripts/export-screenshots.py ios/TestResults.xcresult shots/ios | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish screenshots to ci-shots branch
+        if: always() && hashFiles('shots/ios/results.json') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        run: ci/publish-shots.sh shots/ios ios
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-ui-tests
+          path: |
+            shots/
+            ios/test.log
+            api.log
+          if-no-files-found: ignore
+
+      - name: Fail if tests failed
+        run: exit "${TEST_STATUS:-1}"

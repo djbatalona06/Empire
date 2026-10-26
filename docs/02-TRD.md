@@ -5,16 +5,17 @@
 | Layer | Choice | Why |
 |---|---|---|
 | iOS app | **SwiftUI, iOS 17+**, Observation, SwiftData, MapKit, Swift Charts | Native, offline-capable, no WebView |
-| Payments (device) | **Stripe PaymentSheet** (SPM `StripePaymentSheet`) | Tokenizes card/bank on device → PCI SAQ-A |
+| Android app | **Kotlin + Jetpack Compose**, Android 8+ (API 26), OkHttp, kotlinx.serialization, OpenStreetMap (osmdroid), Keystore-encrypted tokens, file-backed offline queue | Same screens and API as iOS; no Google Maps key needed |
+| Payments (device) | **Stripe PaymentSheet** (iOS: SPM `StripePaymentSheet`; Android: `com.stripe:stripe-android`) | Tokenizes card/bank on device → PCI SAQ-A |
 | API | **Cloudflare Worker**, TypeScript, **Hono** router | Edge latency from SeaTac, one deploy unit |
 | Database | **Cloudflare D1** (SQLite), `us` jurisdiction | Bound to the Worker only, no public endpoint |
 | Files | **Cloudflare R2** (private), US jurisdiction | Door photos, signatures, install + feedback photos |
 | Scheduling | **Cron Trigger** `0 16 * * *` (9 AM Pacific, daylight time) | Overdue marking, payment reminders, stale leads, token cleanup |
-| Push | **APNs** HTTP/2 with ES256 provider token | Install updates, payment reminders, feedback request |
+| Push | **APNs** HTTP/2 with ES256 provider token (iOS). Android: email only for now; FCM is a follow-up | Install updates, payment reminders, feedback request |
 | Email | **Resend** API | Magic links, order confirmation |
-| Geocoding | US Census geocoder (free, no key) on the server; `CLGeocoder` on device | Turn route addresses into coordinates |
+| Geocoding | US Census geocoder (free, no key) on the server; `CLGeocoder` / Android `Geocoder` on device | Turn route addresses into coordinates |
 | Admin console | Static HTML + CSS + JS served by the same Worker (`[assets]`) | No build step, same API |
-| CI/CD | GitHub Actions: test → migrate → deploy; macOS job compiles the iOS app | Matches spec section 12 |
+| CI/CD | GitHub Actions: test → migrate → deploy. iOS: compile + XCUITest in a simulator. Android: build + lint + unit tests + emulator UI tests. Playwright: admin console + app API flow. Screenshots go to the `ci-shots` branch | Matches spec section 12 |
 
 ## Non-functional targets
 

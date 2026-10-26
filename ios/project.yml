@@ -17,7 +17,9 @@ targets:
   DealerDoor:
     type: application
     platform: iOS
-    scheme: {}
+    scheme:
+      testTargets:
+        - DealerDoorUITests
     sources:
       - DealerDoor
     dependencies:
@@ -38,3 +40,15 @@ targets:
         Release:
           API_BASE_URL: https://api.example.com
           APS_ENVIRONMENT: production
+  DealerDoorUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - DealerDoorUITests
+    dependencies:
+      - target: DealerDoor
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dealerdoor.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"

@@ -2,10 +2,10 @@ name: Worker API
 
 on:
   pull_request:
-    paths: ["worker/**", "admin/**", ".github/workflows/worker.yml"]
+    paths: ["worker/**", "admin/**", "e2e/**", "ci/**", ".github/workflows/worker.yml"]
   push:
     branches: [main]
-    paths: ["worker/**", "admin/**", ".github/workflows/worker.yml"]
+    paths: ["worker/**", "admin/**", "e2e/**", "ci/**", ".github/workflows/worker.yml"]
   workflow_dispatch:
     inputs:
       environment:
@@ -32,9 +32,50 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  # Admin console in a real browser (desktop + phone width) and the API flow the iOS app uses.
+  e2e:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # push screenshots to the ci-shots branch
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            worker/package-lock.json
+            e2e/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: e2e
+      - run: npx playwright install --with-deps chromium
+        working-directory: e2e
+      - run: npx playwright test
+        working-directory: e2e
+      - name: Publish screenshots to ci-shots branch
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        working-directory: .
+        run: |
+          for lane in e2e/screenshots/*/; do
+            cp e2e/test-results/results.json "$lane" 2>/dev/null || true
+            ci/publish-shots.sh "$lane" "$(basename "$lane")"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e
+          path: |
+            e2e/screenshots/
+            e2e/test-results/
+          if-no-files-found: ignore
+
   # main → staging automatically; production only by manual dispatch.
   deploy:
-    needs: test
+    needs: [test, e2e]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'staging' }}

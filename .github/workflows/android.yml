@@ -1,0 +1,128 @@
+name: Android app
+
+on:
+  pull_request:
+    paths: ["android/**", "worker/**", "e2e/**", "ci/**", ".github/workflows/android.yml"]
+  push:
+    branches: [main]
+    paths: ["android/**", "worker/**", "e2e/**", "ci/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: android
+
+jobs:
+  # Compile, unit tests and Android lint. The debug APK is attached to the run so you can install it on a phone.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-build
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/reports/
+          if-no-files-found: ignore
+
+  # Runs the app in an Android emulator against the local API, taps through each screen and saves screenshots.
+  ui-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write   # push screenshots to the ci-shots branch
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      # The emulator needs ~7 GB for its data partition; the runner image ships with big toolchains this job never uses.
+      - name: Free disk space
+        working-directory: .
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /usr/local/lib/android/sdk/ndk "$AGENT_TOOLSDIRECTORY"
+          df -h /
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            worker/package-lock.json
+            e2e/package-lock.json
+      - run: npm ci
+        working-directory: worker
+      - run: npm ci
+        working-directory: e2e
+
+      - name: Start local API
+        working-directory: .
+        run: |
+          nohup e2e/start-api.sh > api.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null localhost:8787/ && break; sleep 2; done
+          curl -sf -o /dev/null localhost:8787/ || { tail -50 api.log; exit 1; }
+
+      - name: Seed demo customer (Playwright API flow)
+        working-directory: e2e
+        run: npm run seed:customer
+
+      - name: Enable KVM for the emulator
+        working-directory: .
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build test APKs
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+
+      - name: Run UI tests in the emulator (at SeaTac)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          disk-size: 4096M
+          ram-size: 2048M
+          working-directory: android
+          script: |
+            adb emu geo fix -122.277 47.437
+            ./gradlew --no-daemon :app:connectedDebugAndroidTest > ../android-test.log 2>&1 || (echo "TEST_STATUS=1" >> "$GITHUB_ENV"; grep -E "FAILED|Exception|Error" ../android-test.log | head -60)
+
+      - name: Collect screenshots
+        if: always()
+        working-directory: .
+        run: python3 android/scripts/collect-results.py android shots/android | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish screenshots to ci-shots branch
+        if: always() && hashFiles('shots/android/results.json') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        working-directory: .
+        run: ci/publish-shots.sh shots/android android
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-ui-tests
+          path: |
+            shots/
+            android-test.log
+            api.log
+            android/app/build/reports/androidTests/
+          if-no-files-found: ignore
+
+      - name: Fail if tests failed
+        working-directory: .
+        run: exit "${TEST_STATUS:-0}"

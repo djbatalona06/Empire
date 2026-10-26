@@ -10,7 +10,7 @@ Source of truth: [`worker/migrations/0001_init.sql`](../worker/migrations/0001_i
 | | `crews` | Coworker teams with a lead |
 | | `magic_links` | Hashed one-time sign-in tokens, 15 min |
 | | `sessions` | Hashed rotating refresh tokens, 30 days |
-| | `devices` | APNs tokens per user |
+| | `devices` | APNs tokens per user (Android push via FCM is a follow-up) |
 | **Territory** | `service_area` | SeaTac GeoJSON polygon (approximate until replaced) |
 | | `properties` | One row per address: coords, `seatac_valid`, `needs_review`, `do_not_knock` + reason |
 | | `routes` / `route_stops` | Assigned canvass routes with permit ref; stops point at properties |

@@ -12,12 +12,12 @@
 
 ## Visual system
 
-| Token | iOS | Admin web |
-|---|---|---|
-| Type | SF Pro, system text styles (Dynamic Type) | `system-ui` stack, 15 px base |
-| Color | System colors, app tint = blue; green = done, orange = attention, red = blocked / overdue | Same semantic set, light + dark via `prefers-color-scheme` |
-| Shape | Native lists and forms, capsule status badges | 10 px radius cards, 8 px inputs |
-| Icons | SF Symbols (`house.circle.fill` stop, `hand.raised.fill` do-not-knock, `checkmark.circle.fill` knocked) | Text labels + badges |
+| Token | iOS | Android | Admin web |
+|---|---|---|---|
+| Type | SF Pro, system text styles (Dynamic Type) | Roboto, Material 3 type scale (follows font size setting) | `system-ui` stack, 15 px base |
+| Color | System colors, app tint = blue; green = done, orange = attention, red = blocked / overdue | Material 3 light/dark, primary = brand blue `#0B6BCB`, same green/orange/red meanings | Same semantic set, light + dark via `prefers-color-scheme` |
+| Shape | Native lists and forms, capsule status badges | Material lists, bottom sheets, pill status badges | 10 px radius cards, 8 px inputs |
+| Icons | SF Symbols (`house.circle.fill` stop, `hand.raised.fill` do-not-knock, `checkmark.circle.fill` knocked) | Material icons + the same pin shapes as vector drawables | Text labels + badges |
 
 ## Key screens
 

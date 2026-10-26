@@ -27,7 +27,8 @@ Status key: ✅ built in this repo · 🧪 verified by automated test or browser
 
 - ✅ Login (magic link / password), Face ID unlock, push registration + deep links
 - ✅ Dashboard, order timeline, invoices + PaymentSheet, feedback tab with photo
-- 🙋 First Xcode build on a Mac (CI compiles it on every PR: `.github/workflows/ios.yml`)
+- ✅🧪 UI tests tap through every screen in an iPhone simulator on each PR and save screenshots (`ios/DealerDoorUITests`, `.github/workflows/ios.yml`)
+- 🙋 First Xcode build on your own Mac: follow [08-MAC-XCODE-SETUP.md](08-MAC-XCODE-SETUP.md)
 
 ## Phase 5 · Coworker iOS (weeks 8–11)
 
@@ -35,6 +36,15 @@ Status key: ✅ built in this repo · 🧪 verified by automated test or browser
 - ✅ Lead capture: consent texts, signature, door photo, offline SwiftData queue with conflict flags
 - ✅ Serviceability, appointment, order submit
 - ✅ Weekly pulse banner, scorecard with Swift Charts, kudos
+
+## Phase 5b · Android app
+
+- ✅ Same customer and coworker screens as iOS in Kotlin + Jetpack Compose (`android/`), English + Spanish
+- ✅ Offline queue, Keystore-encrypted session, fingerprint/screen-lock unlock, Stripe PaymentSheet, OpenStreetMap route map
+- ✅🧪 CI builds, lints and unit-tests it, then taps through every screen in an emulator and saves screenshots (`.github/workflows/android.yml`)
+- 🙋 Google Play developer account → upload the release build to an internal / closed testing track
+- 🙋 App Links: set `ANDROID_CERT_SHA256` (wrangler var) and build with `-PappLinkHost=<your api domain>` so sign-in emails open the app
+- 🙋 Push on Android: needs a Firebase project (FCM). Until then Android customers get email updates.
 
 ## Phase 6 · Admin dashboard (weeks 10–12)
 

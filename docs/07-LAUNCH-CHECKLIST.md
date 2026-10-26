@@ -9,7 +9,7 @@ The code enforces the rules; these items need a real person.
 - [ ] AT&T dealer agreement allows "Authorized Retailer" wording and these dealer-billed fees.
 - [ ] App name and icon use dealer branding only (no AT&T logo without written approval).
 - [ ] SeaTac solicitation permit number entered in Settings.
-- [ ] Privacy policy URL (App Store requires one) covering location, photos, contact data, payments.
+- [ ] Privacy policy URL (App Store and Google Play both require one) covering location, photos, contact data, payments.
 
 ## Data
 
@@ -26,3 +26,11 @@ The code enforces the rules; these items need a real person.
 > Location is used to verify a sales rep is at the property during check-in. Payments are for dealer installation/setup fees only; AT&T service is billed by AT&T.
 
 Create the two review accounts in Admin → Users, then set their passwords via `POST /v1/auth/password` while signed in as them.
+
+## Google Play (Android)
+
+- [ ] Google Play developer account; create the app with package `com.dealerdoor.app`.
+- [ ] Fill the **Data safety** form to match the privacy policy: location (rep check-in), photos, name/email/phone, payment info (handled by Stripe).
+- [ ] Use an **internal** or **closed testing** track so only invited people can install, the closest match to App Store "Unlisted".
+- [ ] Copy the app-signing SHA-256 fingerprint (Play Console → App integrity) into the `ANDROID_CERT_SHA256` wrangler var, and build with `-PappLinkHost=<your api domain>` so sign-in emails open the app.
+- [ ] Paste the same review notes and demo accounts as above into **App content → App access**.

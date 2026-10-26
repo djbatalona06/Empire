@@ -59,6 +59,7 @@ ratelimits = [{ name = "AUTH_LIMITER", namespace_id = "1003", simple = { limit =
 #   STRIPE_PUBLISHABLE_KEY
 #   STRIPE_WEBHOOK_SECRET
 #   APNS_KEY_P8 / APNS_KEY_ID / APNS_TEAM_ID   push notifications
+#   ANDROID_CERT_SHA256                       Android App Links for magic sign-in links (not secret; a var is fine)
 #
 # Data residency (set at creation, cannot be changed later):
 #   npx wrangler d1 create dealerdoor-prod --jurisdiction=us

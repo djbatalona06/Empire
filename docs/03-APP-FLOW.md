@@ -5,8 +5,8 @@
 ```mermaid
 flowchart LR
   A[Open app] --> B{Saved session?}
-  B -- yes --> C[Face ID / passcode] --> D{Role}
-  B -- no --> E[Enter email] --> F[Email with magic link] --> G[Tap link on iPhone<br/>universal link opens app] --> D
+  B -- yes --> C[Face ID / fingerprint / passcode] --> D{Role}
+  B -- no --> E[Enter email] --> F[Email with magic link] --> G[Tap link on the phone<br/>universal link / App Link opens app] --> D
   E -. optional .-> P[Password] --> D
   D -- customer --> CU[Customer tabs]
   D -- coworker / lead / office / admin --> CW[Coworker tabs]
