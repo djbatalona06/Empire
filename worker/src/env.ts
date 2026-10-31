@@ -2,6 +2,7 @@ export interface Env {
   DB: D1Database;
   FILES: R2Bucket;
   AUTH_LIMITER?: RateLimit;
+  API_LIMITER?: RateLimit;
 
   ENVIRONMENT: 'development' | 'staging' | 'production';
   PUBLIC_BASE_URL: string;
@@ -11,6 +12,9 @@ export interface Env {
   APP_STORE_URL?: string; // unlisted App Store link sent to new customers
 
   JWT_SECRET: string;
+  // Optional dedicated keys. Each falls back to JWT_SECRET so existing signed URLs and pulse hashes keep working.
+  FILE_SIGNING_SECRET?: string;
+  PULSE_HASH_SECRET?: string;
   RESEND_API_KEY?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_PUBLISHABLE_KEY?: string;
@@ -30,7 +34,7 @@ export interface AuthUser {
   crew_id: string | null;
 }
 
-export type AppEnv = { Bindings: Env; Variables: { user: AuthUser } };
+export type AppEnv = { Bindings: Env; Variables: { user: AuthUser; requestId: string } };
 
 // Role groups used by route guards.
 export const STAFF: Role[] = ['coworker', 'lead', 'office', 'admin'];

@@ -3,6 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Workers Logs: every console.log/console.error line (structured JSON) is searchable in the Cloudflare dashboard.
+[observability]
+enabled = true
+
 # Admin console (static HTML/CSS/JS). API + well-known paths always hit the Worker first.
 [assets]
 directory = "../admin"
@@ -34,6 +38,12 @@ name = "AUTH_LIMITER"
 namespace_id = "1001"
 simple = { limit = 10, period = 60 }
 
+# Every write to /v1, keyed by the caller's token (not the network address) so a whole office can share one connection.
+[[ratelimits]]
+name = "API_LIMITER"
+namespace_id = "2001"
+simple = { limit = 300, period = 60 }
+
 # ---- Staging ---------------------------------------------------------------
 [env.staging]
 name = "dealerdoor-api-staging"
@@ -41,7 +51,7 @@ vars = { ENVIRONMENT = "staging", PUBLIC_BASE_URL = "https://staging-api.example
 triggers = { crons = ["0 16 * * *"] }
 d1_databases = [{ binding = "DB", database_name = "dealerdoor-staging", database_id = "376ebd08-bc8b-4bc8-8cf4-802830ecb24d", migrations_dir = "migrations" }]
 r2_buckets = [{ binding = "FILES", bucket_name = "dealerdoor-files-staging", jurisdiction = "us" }]
-ratelimits = [{ name = "AUTH_LIMITER", namespace_id = "1002", simple = { limit = 10, period = 60 } }]
+ratelimits = [{ name = "AUTH_LIMITER", namespace_id = "1002", simple = { limit = 10, period = 60 } }, { name = "API_LIMITER", namespace_id = "2002", simple = { limit = 300, period = 60 } }]
 
 # ---- Production ------------------------------------------------------------
 [env.production]
@@ -50,10 +60,13 @@ vars = { ENVIRONMENT = "production", PUBLIC_BASE_URL = "https://api.example.com"
 triggers = { crons = ["0 16 * * *"] }
 d1_databases = [{ binding = "DB", database_name = "dealerdoor-prod", database_id = "REPLACE_WITH_PROD_D1_ID", migrations_dir = "migrations" }]
 r2_buckets = [{ binding = "FILES", bucket_name = "dealerdoor-files-prod", jurisdiction = "us" }]
-ratelimits = [{ name = "AUTH_LIMITER", namespace_id = "1003", simple = { limit = 10, period = 60 } }]
+ratelimits = [{ name = "AUTH_LIMITER", namespace_id = "1003", simple = { limit = 10, period = 60 } }, { name = "API_LIMITER", namespace_id = "2003", simple = { limit = 300, period = 60 } }]
 
 # Secrets (wrangler secret put <NAME> --env <env>):
-#   JWT_SECRET          random 64+ chars; signs access tokens, file URLs, pulse hashes
+#   JWT_SECRET          random 64+ chars (32 minimum, the Worker refuses to start below that); signs access tokens
+#   FILE_SIGNING_SECRET optional, random 64+ chars; signs photo/file links. Falls back to JWT_SECRET
+#   PULSE_HASH_SECRET   optional, random 64+ chars; anonymises weekly check-ins. Falls back to JWT_SECRET.
+#                       Never change it once people have answered: old answers would no longer match.
 #   RESEND_API_KEY      email delivery for magic links + invoice notices
 #   STRIPE_SECRET_KEY   payment processor (card + ACH)
 #   STRIPE_PUBLISHABLE_KEY

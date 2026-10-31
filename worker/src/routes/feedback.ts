@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { MANAGERS, STAFF, type AppEnv } from '../env';
 import { requireAuth } from '../lib/auth';
+import { pulseSecret } from '../lib/config';
 import { hmac } from '../lib/crypto';
 import { audit, fail, isoWeek, newId, oneOf, readJson, reqNum, reqStr, str } from '../lib/util';
 
@@ -83,7 +84,7 @@ const COWORKERS = STAFF.filter((r) => r !== 'office' && r !== 'admin');
 /** Drives the in-app banner (pulse is never pushed after hours). */
 app.get('/pulse/status', requireAuth(...STAFF), async (c) => {
   const week = isoWeek();
-  const done = await c.env.DB.prepare('SELECT 1 FROM pulse_responses WHERE user_hash = ? AND iso_week = ?').bind(await pulseHash(c.env.JWT_SECRET, c.get('user').id), week).first();
+  const done = await c.env.DB.prepare('SELECT 1 FROM pulse_responses WHERE user_hash = ? AND iso_week = ?').bind(await pulseHash(pulseSecret(c.env), c.get('user').id), week).first();
   return c.json({ iso_week: week, due: !done, questions: ['workload_score', 'safety_score', 'support_score'] });
 });
 
@@ -97,7 +98,7 @@ app.post('/pulse', requireAuth(...COWORKERS), async (c) => {
     `INSERT INTO pulse_responses (id, user_hash, user_id, crew_id, iso_week, workload_score, safety_score, support_score, anonymous, followup_requested)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user_hash, iso_week) DO NOTHING`,
   )
-    .bind(newId(), await pulseHash(c.env.JWT_SECRET, u.id), anonymous ? null : u.id, u.crew_id, isoWeek(),
+    .bind(newId(), await pulseHash(pulseSecret(c.env), u.id), anonymous ? null : u.id, u.crew_id, isoWeek(),
       rating(body, 'workload_score'), rating(body, 'safety_score'), rating(body, 'support_score'), anonymous ? 1 : 0, followup ? 1 : 0)
     .run();
   if (!res.meta.changes) fail(409, 'already_submitted_this_week');
@@ -140,7 +141,7 @@ const trendSql = (where: string) =>
 app.get('/scorecards/me', requireAuth(...STAFF), async (c) => {
   const u = c.get('user');
   const [trend, kudos, sales] = await Promise.all([
-    c.env.DB.prepare(trendSql('user_hash = ?')).bind(await pulseHash(c.env.JWT_SECRET, u.id)).all(),
+    c.env.DB.prepare(trendSql('user_hash = ?')).bind(await pulseHash(pulseSecret(c.env), u.id)).all(),
     c.env.DB.prepare(`SELECT k.id, k.message, k.order_id, k.route_id, k.created_at, f.display_name AS from_name FROM kudos k LEFT JOIN users f ON f.id = k.from_user_id WHERE k.to_user_id = ? AND k.created_at >= datetime('now', '-90 days') ORDER BY k.created_at DESC`).bind(u.id).all(),
     salesStats(c.env.DB, 'coworker_id = ?', [u.id]),
   ]);
