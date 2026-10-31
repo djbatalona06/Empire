@@ -143,11 +143,26 @@ app.post('/invoices/:id/pay', requireAuth('customer'), async (c) => {
 app.post('/webhooks/stripe', async (c) => {
   const payload = await c.req.text();
   if (!c.env.STRIPE_WEBHOOK_SECRET || !(await verifyStripeSignature(c.env.STRIPE_WEBHOOK_SECRET, c.req.header('stripe-signature'), payload))) fail(400, 'bad_signature');
-  const event = JSON.parse(payload) as { type: string; data: { object: { id: string; amount: number; metadata?: { invoice_id?: string; method?: string } } } };
-  const pi = event.data.object;
-  const status = ({ 'payment_intent.succeeded': 'succeeded', 'payment_intent.processing': 'pending', 'payment_intent.payment_failed': 'failed' } as const)[event.type as 'payment_intent.succeeded'];
-  if (status && pi.metadata?.invoice_id) {
-    await applyPayment(c.env.DB, { invoiceId: pi.metadata.invoice_id, processorId: pi.id, amountCents: pi.amount, method: pi.metadata.method === 'ach' ? 'ach' : 'card', status });
+  let event: { type: string; data: { object: { id: string; amount: number; currency?: string; metadata?: { invoice_id?: string; method?: string } } } };
+  try {
+    event = JSON.parse(payload);
+  } catch {
+    fail(400, 'bad_payload');
+  }
+  const pi = event!.data?.object;
+  const status = ({ 'payment_intent.succeeded': 'succeeded', 'payment_intent.processing': 'pending', 'payment_intent.payment_failed': 'failed' } as const)[event!.type as 'payment_intent.succeeded'];
+  const invoiceId = pi?.metadata?.invoice_id;
+  if (status && invoiceId) {
+    // A signed event is still checked against our own records, so a wrong id or amount in the metadata can't credit an invoice.
+    const known = await c.env.DB.prepare('SELECT invoice_id, amount_cents FROM payments WHERE processor_payment_id = ?').bind(pi.id).first<{ invoice_id: string; amount_cents: number }>();
+    const inv = await c.env.DB.prepare('SELECT amount_cents, amount_paid_cents FROM invoices WHERE id = ?').bind(invoiceId).first<{ amount_cents: number; amount_paid_cents: number }>();
+    const balance = inv ? inv.amount_cents - inv.amount_paid_cents : 0;
+    const matches = known ? known.invoice_id === invoiceId && known.amount_cents === pi.amount : pi.amount > 0 && pi.amount <= balance;
+    if (!inv || (pi.currency && pi.currency.toLowerCase() !== 'usd') || !matches) {
+      console.error(JSON.stringify({ level: 'error', msg: 'stripe_webhook_mismatch', payment: pi.id, invoiceId, amount: pi.amount, requestId: c.get('requestId') }));
+      return c.json({ received: true, ignored: true });
+    }
+    await applyPayment(c.env.DB, { invoiceId, processorId: pi.id, amountCents: pi.amount, method: pi.metadata?.method === 'ach' ? 'ach' : 'card', status });
   }
   return c.json({ received: true });
 });

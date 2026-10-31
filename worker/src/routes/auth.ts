@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { issueTokens, requireAuth } from '../lib/auth';
+import { devLoginAllowed } from '../lib/config';
 import { hashPassword, randomToken, sha256, verifyPassword } from '../lib/crypto';
 import { t } from '../lib/i18n';
 import { sendEmail } from '../lib/notify';
@@ -40,7 +41,7 @@ app.post('/login', async (c) => {
     const link = `${c.env.PUBLIC_BASE_URL}/auth/verify?token=${token}`;
     const s = t(user.locale);
     c.executionCtx.waitUntil(sendEmail(c.env, addr, s.magic_subject, s.magic_body(link)));
-    if (c.env.ENVIRONMENT === 'development') devToken = token;
+    if (devLoginAllowed(c.env)) devToken = token;
   }
   return c.json({ sent: true, ...(devToken && { dev_token: devToken }) });
 });

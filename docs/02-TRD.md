@@ -30,7 +30,8 @@
 | R2 private | Worker-signed URLs (HMAC, 15 min) for PUT and GET |
 | US residency | D1 created with `--jurisdiction=us`; R2 buckets created with `--jurisdiction=us` (binding declares it). Cloudflare offers a US jurisdiction, not a US-West-only one; Worker requests still run at the edge nearest SeaTac |
 | Accessibility | Dynamic Type (system fonts), VoiceOver labels on map pins, ratings, signature pad |
-| Rate limiting | Workers Rate Limiting binding on auth: 10 requests per minute per IP+email |
+| Rate limiting | Workers Rate Limiting bindings: sign-in 10 per minute per IP+email; every other write to `/v1` 300 per minute per signed-in token (so an office sharing one connection does not throttle itself) |
+| Observability | Workers Logs on; every response has `x-request-id`; errors log one JSON line with the same id; `/v1/health` checks D1 and R2 (503 if either fails). See [10-RUNBOOK.md](10-RUNBOOK.md) |
 
 ## API conventions
 
@@ -41,7 +42,7 @@
 
 ## Secrets
 
-`JWT_SECRET`, `RESEND_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `APNS_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, set with `wrangler secret put NAME --env staging|production`. Missing push/email keys turn those features into logged no-ops. A missing Stripe key outside production switches to an instant "mock" settlement so flows can be tested.
+`JWT_SECRET` (32+ characters, the API refuses to start without it), optional `FILE_SIGNING_SECRET` and `PULSE_HASH_SECRET` (each falls back to `JWT_SECRET`), `RESEND_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `APNS_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, set with `wrangler secret put NAME --env staging|production`. Missing push/email keys turn those features into logged no-ops. A missing Stripe key outside production switches to an instant "mock" settlement so flows can be tested.
 
 ## Environments
 

@@ -76,13 +76,16 @@ jobs:
   # main → staging automatically; production only by manual dispatch.
   deploy:
     needs: [test, e2e]
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # Production can only be deployed from main, by hand. Staging deploys automatically from main.
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.environment != 'production' || github.ref == 'refs/heads/main'))
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'staging' }}
     env:
       TARGET: ${{ github.event.inputs.environment || 'staging' }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Set these two as repository variables (Settings → Variables), e.g. https://api.yourdealer.com
+      API_URL: ${{ (github.event.inputs.environment || 'staging') == 'production' && vars.PRODUCTION_API_URL || vars.STAGING_API_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -91,5 +94,19 @@ jobs:
           cache: npm
           cache-dependency-path: worker/package-lock.json
       - run: npm ci
+      - name: Check the required secret exists before touching anything
+        run: |
+          npx wrangler secret list --env "$TARGET" | grep -q '"JWT_SECRET"' || { echo "::error::JWT_SECRET is not set for $TARGET. Run: npx wrangler secret put JWT_SECRET --env $TARGET"; exit 1; }
+      - name: Print the database restore point (D1 Time Travel keeps 30 days of history)
+        run: npx wrangler d1 time-travel info DB --env "$TARGET"
       - run: npx wrangler d1 migrations apply DB --remote --env "$TARGET"
       - run: npx wrangler deploy --env "$TARGET"
+      - name: Smoke test the deployed API
+        run: |
+          if [ -z "$API_URL" ]; then echo "::warning::No API URL variable set for $TARGET; skipping the smoke test."; exit 0; fi
+          for i in 1 2 3 4 5; do
+            if curl -fsS "$API_URL/v1/health" | tee /dev/stderr | grep -q '"ok":true'; then echo "healthy"; exit 0; fi
+            sleep 5
+          done
+          echo "::error::$API_URL/v1/health did not report healthy. Roll back with: npx wrangler rollback --env $TARGET"
+          exit 1

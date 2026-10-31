@@ -31,7 +31,10 @@ app.post('/admin/users', admin, async (c) => {
       str(body, 'phone', { optional: true, max: 20 }) ?? null, oneOf(body, 'locale', ['en', 'es'] as const, true) ?? 'en', str(body, 'crew_id', { optional: true, max: 64 }) ?? null,
     ),
     audit(c.env.DB, c.get('user').id, 'user.create', 'user', id, { role }),
-  ]).catch((e: Error) => fail(409, 'user_exists', e.message));
+  ]).catch((e: Error) => {
+    console.error(JSON.stringify({ level: 'error', msg: 'user_create_failed', detail: e.message }));
+    fail(409, 'user_exists', 'A user with that email already exists, or the crew does not exist.');
+  });
   return c.json({ id }, 201);
 });
 
@@ -39,10 +42,26 @@ app.patch('/admin/users/:id', admin, async (c) => {
   const body = await readJson(c);
   const active = typeof body.active === 'boolean' ? (body.active ? 1 : 0) : null;
   const id = c.req.param('id');
+  const role = oneOf(body, 'role', ROLES, true) ?? null;
+  // `crew_id: null` removes the user from their crew; leaving the key out changes nothing.
+  const setCrew = 'crew_id' in body;
+  const crewId = setCrew ? (body.crew_id === null ? null : str(body, 'crew_id', { max: 64 }) ?? null) : null;
+
+  const target = await c.env.DB.prepare('SELECT role, active FROM users WHERE id = ?').bind(id).first<{ role: Role; active: number }>();
+  if (!target) fail(404, 'not_found');
+
+  // Nobody can lock the admins out: not by editing themselves, and not by removing the last active admin.
+  const losesAdmin = target!.role === 'admin' && target!.active === 1 && ((role !== null && role !== 'admin') || active === 0);
+  if (losesAdmin) {
+    if (id === c.get('user').id) fail(409, 'cannot_demote_self', 'Ask another admin to change your own role or deactivate your account.');
+    const others = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND active = 1 AND id <> ?`).bind(id).first<{ n: number }>();
+    if (!others || others.n < 1) fail(409, 'last_admin', 'There must always be at least one active admin.');
+  }
+
   await c.env.DB.batch([
-    c.env.DB.prepare('UPDATE users SET role = COALESCE(?, role), crew_id = COALESCE(?, crew_id), display_name = COALESCE(?, display_name), active = COALESCE(?, active) WHERE id = ?').bind(
-      oneOf(body, 'role', ROLES, true) ?? null, str(body, 'crew_id', { optional: true, max: 64 }) ?? null, str(body, 'display_name', { optional: true, max: 100 }) ?? null, active, id,
-    ),
+    c.env.DB.prepare(
+      'UPDATE users SET role = COALESCE(?, role), crew_id = CASE WHEN ? = 1 THEN ? ELSE crew_id END, display_name = COALESCE(?, display_name), active = COALESCE(?, active) WHERE id = ?',
+    ).bind(role, setCrew ? 1 : 0, crewId, str(body, 'display_name', { optional: true, max: 100 }) ?? null, active, id),
     // Deactivation kills refresh tokens; access tokens die at the next request (requireAuth re-reads the user).
     ...(active === 0 ? [c.env.DB.prepare(`UPDATE sessions SET revoked_at = datetime('now') WHERE user_id = ? AND revoked_at IS NULL`).bind(id)] : []),
     audit(c.env.DB, c.get('user').id, 'user.update', 'user', id, body),

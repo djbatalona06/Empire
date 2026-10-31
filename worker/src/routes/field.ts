@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { STAFF, type AppEnv, type AuthUser } from '../env';
 import { requireAuth } from '../lib/auth';
 import { signFileUrl } from '../lib/crypto';
+import { fileSecret } from '../lib/config';
 import { haversineMeters } from '../lib/geo';
 import { getProperty, recordConflict, upsertProperty, type Property } from '../lib/properties';
 import { clientId, email, fail, isoDate, isoDateTime, normalizeAddress, num, oneOf, readJson, reqNum, reqStr, str, todayPacific } from '../lib/util';
@@ -148,7 +149,7 @@ app.get('/leads/:id', staff, async (c) => {
     c.env.DB.prepare('SELECT id, kind, text_version, accepted_at, rep_id, address_snapshot FROM consents WHERE lead_id = ?').bind(lead.id).all(),
     c.env.DB.prepare('SELECT * FROM appointments WHERE lead_id = ? ORDER BY scheduled_at').bind(lead.id).all(),
   ]);
-  const sign = (k: unknown) => (typeof k === 'string' ? signFileUrl(new URL(c.req.url).origin, c.env.JWT_SECRET, 'GET', k) : null);
+  const sign = (k: unknown) => (typeof k === 'string' ? signFileUrl(new URL(c.req.url).origin, fileSecret(c.env), 'GET', k) : null);
   return c.json({
     ...lead,
     product_interest: JSON.parse((lead.product_interest as string) ?? '[]'),

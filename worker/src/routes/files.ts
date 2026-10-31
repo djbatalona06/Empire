@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { BACKOFFICE, MANAGERS, STAFF, type AppEnv } from '../env';
 import { requireAuth } from '../lib/auth';
 import { signFileUrl, verifyFileSig } from '../lib/crypto';
+import { fileSecret } from '../lib/config';
 import { fail, oneOf, readJson, reqStr } from '../lib/util';
 
 const app = new Hono<AppEnv>();
@@ -20,7 +21,7 @@ app.post('/uploads', requireAuth(), async (c) => {
   if ((kind === 'feedback_photo') !== (u.role === 'customer')) fail(403, 'forbidden_kind');
   const key = `${kind}/${u.id}/${crypto.randomUUID()}.${TYPES[type]}`;
   const origin = new URL(c.req.url).origin;
-  return c.json({ key, upload_url: await signFileUrl(origin, c.env.JWT_SECRET, 'PUT', key), content_type: type, max_bytes: MAX_BYTES });
+  return c.json({ key, upload_url: await signFileUrl(origin, fileSecret(c.env), 'PUT', key), content_type: type, max_bytes: MAX_BYTES });
 });
 
 app.post('/files/sign', requireAuth(), async (c) => {
@@ -29,12 +30,12 @@ app.post('/files/sign', requireAuth(), async (c) => {
   const owner = key.split('/')[1];
   const staffReader = [...MANAGERS, ...BACKOFFICE].includes(u.role);
   if (owner !== u.id && !staffReader) fail(403, 'forbidden');
-  return c.json({ url: await signFileUrl(new URL(c.req.url).origin, c.env.JWT_SECRET, 'GET', key) });
+  return c.json({ url: await signFileUrl(new URL(c.req.url).origin, fileSecret(c.env), 'GET', key) });
 });
 
 app.put('/files/*', async (c) => {
   const key = c.req.path.slice('/v1/files/'.length);
-  if (!(await verifyFileSig(c.env.JWT_SECRET, 'PUT', key, c.req.query('exp'), c.req.query('sig')))) fail(403, 'bad_signature');
+  if (!(await verifyFileSig(fileSecret(c.env), 'PUT', key, c.req.query('exp'), c.req.query('sig')))) fail(403, 'bad_signature');
   const len = Number(c.req.header('content-length') ?? 0);
   const type = c.req.header('content-type') ?? '';
   if (!len || len > MAX_BYTES) fail(400, 'invalid_size');
@@ -45,7 +46,7 @@ app.put('/files/*', async (c) => {
 
 app.get('/files/*', async (c) => {
   const key = c.req.path.slice('/v1/files/'.length);
-  if (!(await verifyFileSig(c.env.JWT_SECRET, 'GET', key, c.req.query('exp'), c.req.query('sig')))) fail(403, 'bad_signature');
+  if (!(await verifyFileSig(fileSecret(c.env), 'GET', key, c.req.query('exp'), c.req.query('sig')))) fail(403, 'bad_signature');
   const obj = await c.env.FILES.get(key);
   if (!obj) fail(404, 'not_found');
   return new Response(obj!.body, { headers: { 'content-type': obj!.httpMetadata?.contentType ?? 'application/octet-stream', 'cache-control': 'private, max-age=600' } });
