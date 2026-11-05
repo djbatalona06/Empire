@@ -1,4 +1,5 @@
 import type { Env } from '../env';
+import { SmtpError, sendSmtp, smtpConfig } from './smtp';
 
 const b64url = (data: ArrayBuffer | string) =>
   btoa(typeof data === 'string' ? data : String.fromCharCode(...new Uint8Array(data))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -50,15 +51,27 @@ export async function pushToUser(env: Env, userId: string, build: (locale: strin
   );
 }
 
+/**
+ * The one place email leaves the app. Order: SMTP (if SMTP_HOST is set), then Resend (if RESEND_API_KEY is set),
+ * otherwise the message is only written to the log. Never throws: a mail problem must not break a sign-in.
+ */
 export async function sendEmail(env: Env, to: string, subject: string, text: string) {
-  if (!env.RESEND_API_KEY) {
+  try {
+    const smtp = smtpConfig(env);
+    if (smtp) return await sendSmtp(smtp, { from: env.EMAIL_FROM, to, subject, text });
+    if (env.RESEND_API_KEY) return await sendWithResend(env, to, subject, text);
     console.log('[email:disabled]', to, subject);
-    return;
+  } catch (err) {
+    // Only the reason is logged: never the message body (it holds a sign-in link) or any credential.
+    console.error(JSON.stringify({ level: 'error', msg: 'email_failed', via: env.SMTP_HOST ? 'smtp' : 'resend', reason: err instanceof Error ? err.message : String(err), code: err instanceof SmtpError ? err.code : undefined }));
   }
+}
+
+async function sendWithResend(env: Env, to: string, subject: string, text: string) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
     body: JSON.stringify({ from: env.EMAIL_FROM, to, subject, text }),
   });
-  if (!res.ok) console.error('[email:error]', res.status, await res.text());
+  if (!res.ok) throw new Error(`Resend answered ${res.status}: ${await res.text()}`);
 }

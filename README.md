@@ -6,12 +6,12 @@ Customers track their install, pay dealer fees and leave feedback. Field reps wa
 | Part | Folder | What it is |
 |---|---|---|
 | API | [`worker/`](worker) | Cloudflare Worker (TypeScript + Hono), D1 database, R2 files, daily cron, APNs push, Stripe |
-| Admin console | [`admin/`](admin) | Plain HTML / CSS / JS, served by the same Worker at `/` |
+| Admin console | [`admin/`](admin) | Plain HTML / CSS / JS, served by the same Worker at `/`. Includes the Leaflet **Map** view and a phone map page at `/map.html` (Leaflet 1.9.4 is vendored in `admin/vendor`, no build step) |
 | iPhone app | [`ios/`](ios) | Native SwiftUI (iOS 17+), XcodeGen project, XCUITest smoke tests |
 | Android app | [`android/`](android) | Native Kotlin + Jetpack Compose (Android 8+), Gradle, Compose UI tests |
 | Browser + API tests | [`e2e/`](e2e) | Playwright: admin console at desktop and phone width, plus the API flow both apps use |
 | CI helpers | [`ci/`](ci) | Publishes test screenshots to the `ci-shots` branch |
-| Planning docs | [`docs/`](docs) | 01 PRD · 02 TRD · 03 App Flow · 04 UI/UX · 05 Schema · 06 Implementation Plan · 07 Launch Checklist · 08 Mac setup |
+| Planning docs | [`docs/`](docs) | 01 PRD · 02 TRD · 03 App Flow · 04 UI/UX · 05 Schema · 06 Implementation Plan · 07 Launch Checklist · 08 Mac setup · 09 Ship status · 10 Runbook |
 
 ## What each app does
 
@@ -26,6 +26,10 @@ Both phone apps have the same screens and talk to the same API. Sign-in picks th
 | | **Me**: 90-day stats, weekly check-in trend, crew average, kudos |
 
 Shared: magic-link or password sign-in, Face ID / fingerprint unlock, works offline in the field, English and Spanish.
+
+**Owner sign-in (two steps).** The owner account (set with the `MASTER_EMAIL` secret) gets in with an email link, but sees nothing real until the password is entered. A link alone only opens a locked screen; invoices, sales, leads and every other data route answer `403 password_required` until the password step is done. Any user can be put behind the same gate with `users.require_password = 1`. Everyone else keeps the one-step sign-in.
+
+**Maps without leaving the app.** The admin console has a **Map** view (leads, sales, do-not-knock, door knocks, SeaTac outline, filters) and each order shows where it was taken, with a "Show on the big map" button. Reps open `/map.html` on their phone for their own leads and sales and a "Near me" button.
 
 | | iPhone | Android |
 |---|---|---|
@@ -45,7 +49,7 @@ cd worker && npm ci && cd ..
 e2e/start-api.sh            # migrates, loads demo data, serves http://localhost:8787
 ```
 
-Open http://localhost:8787 and sign in as `admin@dealerdoor.test`. In development the magic link is skipped automatically.
+Open http://localhost:8787 and sign in as `admin@dealerdoor.test`. In development the magic link is skipped automatically. To try the two-step owner sign-in, use `owner@dealerdoor.test` (set by `MASTER_EMAIL` in `worker/.dev.vars`): the first time you create a password, after that you enter it. Reps (`rep1@`) are sent to the phone map at `/map.html`.
 
 Demo users (all `@dealerdoor.test`): `admin@`, `office@`, `lead@`, `rep1@`, `rep2@`. For a customer with an order and invoices, run once:
 
@@ -77,8 +81,8 @@ Full step-by-step for a new Mac: [docs/08-MAC-XCODE-SETUP.md](docs/08-MAC-XCODE-
 ## Tests
 
 ```bash
-cd worker && npm test && npm run typecheck        # 22 end-to-end API tests on a real local D1
-cd e2e && npx playwright test                     # admin console (desktop + phone) and the app API flow
+cd worker && npm test && npm run typecheck        # 72 API tests on a real local D1 (sign-in gate, SMTP client, map data and the original suite)
+cd e2e && npx playwright test                     # admin console (desktop + phone), owner sign-in, maps, and the app API flow
 cd android && ./gradlew testDebugUnitTest lintDebug
 ```
 
@@ -96,7 +100,8 @@ Each UI-test job saves a screenshot of every screen and pushes them to the [`ci-
 
 | Area | Endpoints |
 |---|---|
-| Auth | `POST auth/login` (magic link or password) · `auth/verify` · `auth/refresh` · `auth/logout` · `auth/password` · `GET/PATCH me` · `POST devices` |
+| Auth | `POST auth/login` (magic link or password) · `auth/verify` · `auth/refresh` · `auth/logout` · `auth/step-up` (password step) · `auth/password` (set or change) · `GET/PATCH me` · `POST devices` |
+| Map | `GET map/points?layers=leads,sales,dnk,checkins&status=&from=&to=&bbox=&limit=` (each person gets only what they may see) |
 | Field | `GET routes/mine` · `service-area` · `dnk/map` · `POST properties/validate` · `POST check-ins` |
 | Leads | `GET/POST leads` · `GET/PATCH leads/:id` · `POST leads/:id/serviceability` · `POST appointments` · `PATCH appointments/:id` |
 | Orders | `GET/POST orders` · `GET/PATCH orders/:id` · `GET orders/:id/timeline` · `PATCH timeline/:id` |

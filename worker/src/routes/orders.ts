@@ -36,7 +36,7 @@ async function loadOrder(db: D1Database, u: AuthUser, id: string) {
   const [scope, args] = orderScope(u);
   return (
     (await db
-      .prepare(`SELECT o.*, p.address FROM orders o LEFT JOIN leads l ON l.id = o.lead_id LEFT JOIN properties p ON p.id = l.property_id WHERE o.id = ? AND ${scope}`)
+      .prepare(`SELECT o.*, p.address, p.lat, p.lng FROM orders o LEFT JOIN leads l ON l.id = o.lead_id LEFT JOIN properties p ON p.id = l.property_id WHERE o.id = ? AND ${scope}`)
       .bind(id, ...args)
       .first<Record<string, unknown> & { id: string; customer_id: string; status: string; bundle_json: string }>()) ?? fail(404, 'order_not_found')
   );
@@ -153,7 +153,8 @@ app.get('/orders/:id', requireAuth(), async (c) => {
   const { bundle_json, ...rest } = order;
   const base = { ...rest, bundle: JSON.parse(bundle_json), billing_notice: t(u.locale).att_billing_notice };
   if (u.role === 'customer') {
-    const { coworker_id, lead_id, att_order_ref, ...pub } = base as Record<string, unknown>;
+    // Customers do not need the property's map position, and it is not theirs to share.
+    const { coworker_id, lead_id, att_order_ref, lat, lng, ...pub } = base as Record<string, unknown>;
     return c.json({ ...pub, timeline: customerTimeline(rows, order, u.locale), feedback_unlocked: !!order.activated_at });
   }
   const commission = await c.env.DB.prepare('SELECT estimate_cents, actual_cents, status FROM commissions WHERE order_id = ?').bind(order.id).first();

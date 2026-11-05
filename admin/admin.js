@@ -1,37 +1,10 @@
 'use strict';
-// DealerDoor admin console. Talks to the same Worker API as the iOS app.
+// DealerDoor admin console. Talks to the same Worker API as the phone apps.
+// Sign-in, the session and api() live in auth.js (loaded first).
 
-const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const money = (cents) => (cents == null ? '—' : `$${(cents / 100).toFixed(2)}`);
 const dollarsToCents = (v) => (v === '' || v == null ? undefined : Math.round(Number(v) * 100));
 const day = (iso) => (iso ? new Date(iso.replace(' ', 'T') + (iso.length === 19 ? 'Z' : '')).toLocaleString() : '—');
-
-// ---- Session (tab-scoped; closing the tab signs out) ----------------------
-
-const session = {
-  get access() { return sessionStorage.getItem('access'); },
-  get refresh() { return sessionStorage.getItem('refresh'); },
-  save(t) { sessionStorage.setItem('access', t.access_token); sessionStorage.setItem('refresh', t.refresh_token); },
-  clear() { sessionStorage.clear(); },
-};
-let me = null;
-
-async function api(path, { method, body } = {}, retried = false) {
-  const res = await fetch(`/v1${path}`, {
-    method: method ?? (body ? 'POST' : 'GET'),
-    headers: { 'content-type': 'application/json', ...(session.access && { authorization: `Bearer ${session.access}` }) },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (res.status === 401 && session.refresh && !retried) {
-    const r = await fetch('/v1/auth/refresh', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ refresh_token: session.refresh }) });
-    if (r.ok) { session.save(await r.json()); return api(path, { method, body }, true); }
-    session.clear(); location.reload();
-  }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message && data.message !== data.error ? data.message : (data.error ?? `HTTP ${res.status}`).replaceAll('_', ' '));
-  return data;
-}
 
 function toast(msg, isError = false) {
   const el = $('#toast');
@@ -44,12 +17,6 @@ function toast(msg, isError = false) {
 
 /** Runs an async action, reporting errors as a toast. */
 const guard = (fn) => async (...args) => { try { await fn(...args); } catch (e) { toast(e.message, true); } };
-
-function formValues(form) {
-  const out = {};
-  for (const [k, v] of new FormData(form)) out[k] = typeof v === 'string' ? v.trim() : v;
-  return out;
-}
 
 // ---- Rendering helpers (textContent only, never innerHTML with data) ------
 
@@ -91,6 +58,9 @@ async function fillOptions(name, rows, label) {
 
 // ---- Views ----------------------------------------------------------------
 
+let mapView = null; // the Map view's map, created the first time the view is opened
+let mapFocus = null; // a place the Map view should zoom to the next time it opens
+
 const views = {
   async overview() {
     const m = await api('/admin/metrics');
@@ -112,6 +82,28 @@ const views = {
       tile('Addresses to review', c.properties_needing_review),
       tile('Open sync conflicts', c.open_conflicts),
     );
+  },
+
+  async map() {
+    const firstTime = !mapView;
+    if (firstTime) {
+      mapView = DealerMap.create($('#leaflet-map'), {
+        fetchPoints: (query) => api(`/map/points?${query}`),
+        fetchArea: () => api('/service-area'),
+        filters: () => formValues($('#map-filter')),
+        onOpen: (kind, id) => openOrder(id),
+        onNote: (text) => { $('#map-note').textContent = text; },
+      });
+    } else {
+      // The map was measured while hidden; measure again now that it is showing.
+      mapView.invalidate();
+    }
+    if (mapFocus) {
+      mapView.focus(mapFocus.lat, mapFocus.lng);
+      mapFocus = null;
+    } else if (!firstTime) {
+      mapView.refresh();
+    }
   },
 
   async review() {
@@ -292,7 +284,12 @@ async function openOrder(id) {
     return row;
   }));
   if (!$('#order-dialog').open) $('#order-dialog').showModal();
+  orderMap ??= DealerMap.mini($('#order-minimap'));
+  orderMap.show(o.lat, o.lng, o.address);
+  $('#order-show-map').hidden = o.lat == null || o.lng == null;
 }
+
+let orderMap = null; // the small "where this happened" map in the order dialog
 
 // ---- Forms ----------------------------------------------------------------
 
@@ -311,6 +308,14 @@ function bindForms() {
     views.routes();
   });
   onSubmit('#dnk-form', async (v, form) => { await api('/admin/dnk', { body: v }); form.reset(); toast('Added to do-not-knock list'); views.dnk(); });
+  onSubmit('#map-filter', () => mapView?.refresh());
+  $('#order-show-map').onclick = () => {
+    mapFocus = { lat: currentOrder.lat, lng: currentOrder.lng };
+    $('#order-dialog').close();
+    // Already on the Map view: no page change will happen, so ask for it directly.
+    if (location.hash === '#map') views.map();
+    else location.hash = '#map';
+  };
   onSubmit('#lead-filter', () => views.leads());
   onSubmit('#order-filter', () => views.orders());
   onSubmit('#feedback-filter', () => views.feedback());
@@ -371,52 +376,20 @@ function show(name) {
   guard(views[name])();
 }
 
-async function start() {
-  me = await api('/me');
-  if (me.role === 'customer' || me.role === 'coworker') {
-    session.clear();
-    throw new Error('The admin console is for team leads, office staff and admins. Use the DealerDoor app.');
-  }
+/** Called by bootAuth once the person is fully signed in. */
+function startConsole() {
   $('#me-name').textContent = `${me.display_name ?? me.email} · ${me.role}`;
   for (const a of $$('.sidebar a')) a.hidden = !a.dataset.roles.split(' ').includes(me.role);
-  $('#login').hidden = true;
   $('#app').hidden = false;
   bindForms();
   window.addEventListener('hashchange', () => show(location.hash.slice(1)));
   show(location.hash.slice(1) || 'overview');
 }
 
-async function boot() {
-  // Arriving from an emailed magic link: /auth/verify redirects to /#magic=<token>.
-  const magic = new URLSearchParams(location.hash.slice(1)).get('magic');
-  if (magic) {
-    history.replaceState(null, '', '/');
-    try { session.save(await api('/auth/verify', { body: { token: magic } })); } catch (e) { $('#login-msg').textContent = e.message; }
-  }
-  if (session.access) {
-    try { return await start(); } catch (e) { $('#login-msg').textContent = e.message; }
-  }
-  $('#login').hidden = false;
-}
+$('#logout').onclick = () => window.signOut();
 
-$('#login-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const v = formValues(e.target);
-  const msg = $('#login-msg');
-  try {
-    const res = await api('/auth/login', { body: { email: v.email, password: v.password || undefined } });
-    if (res.access_token) { session.save(res); return start().catch((err) => (msg.textContent = err.message)); }
-    if (res.dev_token) { session.save(await api('/auth/verify', { body: { token: res.dev_token } })); return start(); } // local dev only
-    msg.textContent = 'Check your email for a sign-in link.';
-  } catch (err) {
-    msg.textContent = err.message;
-  }
+bootAuth({
+  // Reps work from the phone map; customers use the customer app.
+  accepts: (m) => (m.role === 'coworker' ? { redirect: '/map.html' } : m.role === 'customer' ? 'The admin console is for team leads, office staff and admins. Use the DealerDoor app.' : null),
+  ready: startConsole,
 });
-
-$('#logout').onclick = async () => {
-  await api('/auth/logout', { body: { refresh_token: session.refresh } }).catch(() => {});
-  session.clear();
-  location.href = '/';
-};
-
-boot();

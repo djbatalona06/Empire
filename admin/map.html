@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>DealerDoor Map</title>
+  <link rel="stylesheet" href="/admin.css">
+  <link rel="stylesheet" href="/map.css">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/vendor/markercluster/MarkerCluster.css">
+  <link rel="stylesheet" href="/vendor/markercluster/MarkerCluster.Default.css">
+  <script src="/vendor/leaflet/leaflet.js" defer></script>
+  <script src="/vendor/markercluster/leaflet.markercluster.js" defer></script>
+  <script src="/auth.js" defer></script>
+  <script src="/map-core.js" defer></script>
+  <script src="/map.js" defer></script>
+</head>
+<body>
+
+<!-- Phone-friendly map for the sales team: my leads, my sales, do-not-knock addresses, and where I am. -->
+
+<!-- ===== Sign in ===== -->
+<main id="login" class="login" hidden>
+  <form id="login-form" class="card">
+    <h1>DealerDoor Map</h1>
+    <p class="muted">Enter your email and we'll send a one-time link.</p>
+    <label>Email <input name="email" type="email" required autocomplete="username"></label>
+    <details>
+      <summary>Use a password instead</summary>
+      <label>Password <input name="password" type="password" autocomplete="current-password"></label>
+    </details>
+    <button type="submit">Continue</button>
+    <p id="login-msg" class="muted" role="status"></p>
+  </form>
+</main>
+
+<!-- ===== Step 2: password (only for accounts that need one) ===== -->
+<main id="locked" class="login" hidden>
+  <form id="unlock-form" class="card">
+    <h1>Unlock DealerDoor</h1>
+    <p id="unlock-intro" class="muted"></p>
+    <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+    <label id="confirm-row" hidden>Confirm password <input name="confirm" type="password" autocomplete="new-password"></label>
+    <p id="unlock-hint" class="muted" hidden>Use at least 12 characters. A few random words works well.</p>
+    <button type="submit" id="unlock-btn">Unlock</button>
+    <button type="button" id="unlock-signout" class="link">Use a different email</button>
+    <p id="unlock-msg" class="muted" role="status"></p>
+  </form>
+</main>
+
+<!-- ===== The map ===== -->
+<div id="app" class="map-page" hidden>
+  <header class="topbar">
+    <strong>DealerDoor map</strong>
+    <span id="me-name" class="muted"></span>
+    <button id="logout" class="link" type="button">Sign out</button>
+  </header>
+  <div id="leaflet-map" class="map" role="region" aria-label="Map of my leads, my sales and do-not-knock addresses"></div>
+  <p id="map-note" class="map-note muted" role="status"></p>
+</div>
+
+</body>
+</html>

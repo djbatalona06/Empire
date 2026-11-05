@@ -11,6 +11,15 @@ The code enforces the rules; these items need a real person.
 - [ ] SeaTac solicitation permit number entered in Settings.
 - [ ] Privacy policy URL (App Store and Google Play both require one) covering location, photos, contact data, payments.
 
+## Sign-in, email and maps
+
+- [ ] `npx wrangler secret put MASTER_EMAIL --env <env>` with the owner's address (staging and production). Without it nobody is bootstrapped as owner.
+- [ ] Email works: `SMTP_HOST`, `SMTP_PORT` (465 or 587, never 25), `SMTP_USER`, `SMTP_PASS` as secrets, and `EMAIL_FROM` set to an address on a domain you have verified with your mail provider (SPF and DKIM records). A Gmail app password works for a first test but is not for production: mail from a personal address lands in spam.
+- [ ] Sign in as the owner on staging: the emailed link arrives, opens the locked screen, and you create the password straight away. **Do this right after the first deploy.** Until the first password exists, whoever can read the owner's mailbox can set it.
+- [ ] Confirm a wrong password five times locks the account, and that the emailed link alone cannot open invoices.
+- [ ] Map tiles: the public OpenStreetMap server is for light use (its usage policy applies). Before many people use the map, switch `TILE_URL` in `admin/map-core.js` to a hosted tile provider.
+- [ ] Privacy policy mentions that rep and customer locations are shown on an internal map.
+
 ## Data
 
 - [ ] Official SeaTac boundary polygon loaded (Admin → Settings).

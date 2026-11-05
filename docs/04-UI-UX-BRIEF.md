@@ -27,6 +27,10 @@
 - **Lead capture:** single form, sections in the order the conversation happens: address → customer → interest → photo → consent + signature. Save stays disabled until consent + signature exist.
 - **Pulse:** three segmented 1–5 scales, "Poor … Great" captions, anonymous toggle on by default.
 
+- **Locked screen:** one card: who you are signed in as, one password box (two the first time), "Use a different email" underneath. Nothing else on the page.
+- **Maps (admin web):** OpenStreetMap tiles, dashed blue SeaTac outline, legend bottom-left (blue dot = lead, green star = sale, red hand = do-not-knock), layer picker top-right. Pin colors follow the same meanings as the rest of the app: blue = active, amber = needs attention, green = done, red = blocked, grey = closed. Sales are stars and leads are dots so they differ by shape, not only by color.
+- **Phone map:** map fills the screen under a slim bar; big **Near me** button top-left; works one-handed at 390 px wide with no sideways scrolling.
+
 ## Accessibility
 
 - Dynamic Type everywhere (no fixed font sizes for body text).

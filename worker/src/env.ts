@@ -23,6 +23,15 @@ export interface Env {
   APNS_KEY_ID?: string;
   APNS_TEAM_ID?: string;
   ANDROID_CERT_SHA256?: string;
+
+  // The owner account. Kept as a secret so the address never lives in the repo. Unset = no owner bootstrap.
+  MASTER_EMAIL?: string;
+
+  // Email over SMTP (ports 465 or 587; Workers cannot use 25). Unset = fall back to Resend, then to a logged no-op.
+  SMTP_HOST?: string;
+  SMTP_PORT?: string;
+  SMTP_USER?: string;
+  SMTP_PASS?: string;
 }
 
 export type Role = 'customer' | 'coworker' | 'lead' | 'office' | 'admin';
@@ -32,7 +41,12 @@ export interface AuthUser {
   role: Role;
   locale: 'en' | 'es';
   crew_id: string | null;
+  /** Trust level of this session: 1 = proved the mailbox only, 2 = also proved the password. */
+  aal: 1 | 2;
 }
+
+/** Two sign-in steps. See migration 0004. */
+export type AssuranceLevel = 1 | 2;
 
 export type AppEnv = { Bindings: Env; Variables: { user: AuthUser; requestId: string } };
 

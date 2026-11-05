@@ -17,6 +17,7 @@ Door-to-door sales today run on paper, texts and spreadsheets. Leads get lost, c
 | **Team lead** | Assign routes, review flagged addresses and leads, moderate feedback, see crew scores |
 | **Office / back office** | Move orders through install → activation, create invoices, maintain catalog and coverage |
 | **Admin** | Everything above, plus commissions, users, settings, audit log, individual scorecards |
+| **Owner** (the admin named by the `MASTER_EMAIL` secret) | Same as admin, behind a two-step sign-in: email first, password before any invoice, sale or lead is shown |
 
 ## Goals and success metrics
 
@@ -40,9 +41,13 @@ Door-to-door sales today run on paper, texts and spreadsheets. Leads get lost, c
 6. Customer feedback tab (4 ratings, comment ≤1,000 chars, optional photo), admin moderation.
 7. Coworker pulse (weekly, 3 questions, anonymous by default), kudos tied to a route or order, scorecards.
 8. Web admin console for leads, office and admins.
+9. **Two-step owner sign-in.** An email link gets you to a locked screen; a password unlocks the data. Wrong passwords lock the account for 15 minutes after 5 tries.
+10. **Maps inside the app.** Leaflet map of leads, sales, do-not-knock addresses and door knocks in the admin console, a "where was this sale" map on every order, and a phone map page for reps, so nobody opens another site or app to find or remember a location.
 
 ## Out of scope (v1)
 
+- Texting a verification code (SMS) at sign-in. Costs about $0.06 per code and US numbers need carrier registration first, so it is parked until email + password is live. See [06-IMPLEMENTATION-PLAN.md](06-IMPLEMENTATION-PLAN.md) Phase 9.
+- Leaflet inside the iPhone and Android apps. They keep their native maps (MapKit, osmdroid) for now.
 - Processing AT&T recurring service charges (AT&T bills those; the app says so on every money screen).
 - Real-time AT&T order system integration (office enters install dates and order refs).
 - Commission payouts (we estimate and reconcile; payroll pays).

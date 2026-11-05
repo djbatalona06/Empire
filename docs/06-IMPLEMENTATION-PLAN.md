@@ -62,6 +62,18 @@ Status key: ✅ built in this repo · 🧪 verified by automated test or browser
 
 - 3 routes, 10 coworkers, 20 customers. Watch Admin → Overview daily; the compliance tiles must stay at 0.
 
+## Phase 9 · Owner sign-in and maps
+
+- ✅🧪 Two-step sign-in: email link gives a locked level-1 session, password gives level 2; `require_password` per user; lockout after 5 wrong passwords; refresh keeps its level (`worker/test/owner-gate.test.ts`, `e2e/tests/03-owner-gate.spec.ts`)
+- ✅🧪 Owner account bootstrapped from the `MASTER_EMAIL` secret (no address in the repo)
+- ✅🧪 SMTP client for Workers (465 implicit TLS, 587 STARTTLS, AUTH PLAIN/LOGIN, header-injection guard) with Resend and log-only fallbacks (`worker/test/smtp.test.ts`)
+- ✅🧪 Map API `GET /v1/map/points` with per-role scoping, filters, bounding box and limits (`worker/test/map.test.ts`)
+- ✅🧪 Leaflet 1.9.4 Map view, order mini-map, "Show on the big map", and the rep phone map `/map.html` (`e2e/tests/04-map.spec.ts`)
+- 🙋 Set `MASTER_EMAIL` and the `SMTP_*` secrets in staging and production, verify the sending domain (SPF + DKIM), then set the owner's password on first sign-in
+- 🙋 Move off the public OpenStreetMap tile server before the pilot grows (`TILE_URL` in `admin/map-core.js`)
+- ⏸ SMS code at sign-in: parked. Twilio Verify is about $0.06 per code and US numbers need carrier registration, so start that paperwork only if you decide to add it. The hook point is `POST /v1/auth/step-up`, which would take a code as well as the password.
+- ⏸ Leaflet inside the native apps: parked. They keep MapKit and osmdroid.
+
 ## Deploy commands
 
 ```bash

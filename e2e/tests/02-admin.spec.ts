@@ -1,12 +1,16 @@
 import { expect, test } from '@playwright/test';
 
 // Every sidebar section of the admin console, at desktop and phone width. Screenshots feed the progress gallery.
-const SECTIONS = ['overview', 'review', 'routes', 'dnk', 'leads', 'orders', 'invoices', 'feedback', 'scorecards', 'commissions', 'catalog', 'users', 'settings', 'audit'];
+const SECTIONS = ['overview', 'map', 'review', 'routes', 'dnk', 'leads', 'orders', 'invoices', 'feedback', 'scorecards', 'commissions', 'catalog', 'users', 'settings', 'audit'];
 
 test('admin console sections load without errors', async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  // The Map view loads tiles from OpenStreetMap. Stub them so this test never needs the internet.
+  await page.route('https://tile.openstreetmap.org/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') }),
+  );
 
   await page.goto('/');
   await page.locator('#login-form input[name=email]').fill('admin@dealerdoor.test');

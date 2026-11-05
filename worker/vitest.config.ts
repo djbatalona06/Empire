@@ -6,7 +6,7 @@ export default defineConfig(async () => ({
     cloudflareTest({
       wrangler: { configPath: './wrangler.toml' },
       miniflare: {
-        bindings: { TEST_MIGRATIONS: await readD1Migrations('./migrations'), JWT_SECRET: 'test-secret-0123456789abcdef0123456789abcdef', STRIPE_WEBHOOK_SECRET: 'whsec_test' },
+        bindings: { TEST_MIGRATIONS: await readD1Migrations('./migrations'), JWT_SECRET: 'test-secret-0123456789abcdef0123456789abcdef', STRIPE_WEBHOOK_SECRET: 'whsec_test', MASTER_EMAIL: 'owner@example.test' },
       },
     }),
   ],
