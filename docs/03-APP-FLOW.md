@@ -12,7 +12,21 @@ flowchart LR
   D -- coworker / lead / office / admin --> CW[Coworker tabs]
 ```
 
-Desktop staff click the same link and land in the **admin console** (`/auth/verify` → `/#magic=…`).
+Desktop staff click the same link and land in the **admin console** (`/auth/verify` → `/#magic=…`). Reps who land there are sent on to the phone map (`/map.html`).
+
+### Owner sign-in (two steps)
+
+```mermaid
+flowchart LR
+  A[Enter email] --> B[Emailed link] --> C[Locked screen<br/>nothing loaded]
+  A -. or .-> P[Email + password]
+  C --> D{Password set yet?}
+  D -- no, first time --> E[Create password<br/>12+ characters] --> F
+  D -- yes --> G[Enter password] --> F[Full console]
+  P --> F
+```
+
+The locked screen asks the server for nothing but the person's own profile. Every other call returns `403 password_required` until the password step is done. To change an existing password you must enter the current one. Forgot it? See [10-RUNBOOK.md](10-RUNBOOK.md) ("Owner forgot the password").
 
 ## Customer: 3 tabs
 
@@ -55,6 +69,7 @@ Sidebar sections, shown by role:
 | Section | Lead | Office | Admin | What happens |
 |---|---|---|---|---|
 | Overview | ✓ | ✓ | ✓ | Success-metric tiles with targets |
+| Map | ✓ (crew) | ✓ | ✓ | Leaflet map: lead dots, sale stars, do-not-knock hands, optional door knocks, SeaTac outline. Filter by status and dates. Click a sale → open its order. Orders show a mini-map and a "Show on the big map" button |
 | Review queue | ✓ | | ✓ | Approve/deny out-of-area addresses; resolve sync conflicts |
 | Routes | ✓ | | ✓ | Paste addresses → geocode → DNK removed → assign rep + date + permit |
 | Do-not-knock | ✓ | ✓ | ✓ | Add (also pulls address off future routes); admin can remove |
@@ -68,6 +83,10 @@ Sidebar sections, shown by role:
 | Users & crews | | | ✓ | Add users, deactivate (revokes sessions) |
 | Settings | ✓ (view) | | ✓ | Permit ref, default terms, consent version, geofence, stale-lead days, service-area polygon |
 | Audit log | | | ✓ | Every admin action |
+
+## Phone map (`/map.html`, for reps)
+
+Sign in (same two steps), then a full-screen map with only the rep's own leads and sales plus do-not-knock hands. **Near me** centers on the phone's location. Nearby pins merge into numbered bubbles; zoom in to split them. Team leads see their crew; office and admin see everyone.
 
 ## Order stage rules
 

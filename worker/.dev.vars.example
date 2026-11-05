@@ -1,5 +1,18 @@
 JWT_SECRET=dev-only-secret-change-me-0123456789abcdef0123456789abcdef
+
+# The owner account. Whoever signs in with this address becomes an admin who must use a password.
+# This one is made up for local work. In staging and production set the real one as a secret:
+#   npx wrangler secret put MASTER_EMAIL --env production
+MASTER_EMAIL=owner@dealerdoor.test
+
+# Email. Set SMTP_* to send through any SMTP provider (port 465 or 587; Workers cannot use 25), or RESEND_API_KEY.
+# With neither, emails are only written to the log.
+# SMTP_HOST=smtp.example.com
+# SMTP_PORT=465
+# SMTP_USER=
+# SMTP_PASS=
 # RESEND_API_KEY=
+
 # STRIPE_SECRET_KEY=sk_test_...
 # STRIPE_PUBLISHABLE_KEY=pk_test_...
 # STRIPE_WEBHOOK_SECRET=whsec_...

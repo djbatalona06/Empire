@@ -67,7 +67,9 @@ ratelimits = [{ name = "AUTH_LIMITER", namespace_id = "1003", simple = { limit =
 #   FILE_SIGNING_SECRET optional, random 64+ chars; signs photo/file links. Falls back to JWT_SECRET
 #   PULSE_HASH_SECRET   optional, random 64+ chars; anonymises weekly check-ins. Falls back to JWT_SECRET.
 #                       Never change it once people have answered: old answers would no longer match.
-#   RESEND_API_KEY      email delivery for magic links + invoice notices
+#   MASTER_EMAIL        the owner's address. Signing in with it creates an admin who must use a password
+#   SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS   email by SMTP. Port 465 or 587 (Workers cannot use 25)
+#   RESEND_API_KEY      email delivery if SMTP_HOST is not set (magic links + invoice notices)
 #   STRIPE_SECRET_KEY   payment processor (card + ACH)
 #   STRIPE_PUBLISHABLE_KEY
 #   STRIPE_WEBHOOK_SECRET

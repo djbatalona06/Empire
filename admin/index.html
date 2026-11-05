@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DealerDoor Admin</title>
   <link rel="stylesheet" href="/admin.css">
+  <link rel="stylesheet" href="/map.css">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/vendor/markercluster/MarkerCluster.css">
+  <link rel="stylesheet" href="/vendor/markercluster/MarkerCluster.Default.css">
+  <script src="/vendor/leaflet/leaflet.js" defer></script>
+  <script src="/vendor/markercluster/leaflet.markercluster.js" defer></script>
+  <script src="/auth.js" defer></script>
+  <script src="/map-core.js" defer></script>
   <script src="/admin.js" defer></script>
 </head>
 <body>
@@ -13,7 +21,7 @@
 <main id="login" class="login" hidden>
   <form id="login-form" class="card">
     <h1>DealerDoor Admin</h1>
-    <p class="muted">Staff sign-in. We'll email you a one-time link.</p>
+    <p class="muted">Staff sign-in. Enter your email and we'll send a one-time link. Your password then unlocks invoices, sales and leads.</p>
     <label>Email <input name="email" type="email" required autocomplete="username"></label>
     <details>
       <summary>Use a password instead</summary>
@@ -24,11 +32,26 @@
   </form>
 </main>
 
+<!-- ===== Step 2: password. Shown to a signed-in person whose account needs a password before any real data loads. ===== -->
+<main id="locked" class="login" hidden>
+  <form id="unlock-form" class="card">
+    <h1>Unlock DealerDoor</h1>
+    <p id="unlock-intro" class="muted"></p>
+    <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+    <label id="confirm-row" hidden>Confirm password <input name="confirm" type="password" autocomplete="new-password"></label>
+    <p id="unlock-hint" class="muted" hidden>Use at least 12 characters. A few random words works well.</p>
+    <button type="submit" id="unlock-btn">Unlock</button>
+    <button type="button" id="unlock-signout" class="link">Use a different email</button>
+    <p id="unlock-msg" class="muted" role="status"></p>
+  </form>
+</main>
+
 <!-- ===== App shell ===== -->
 <div id="app" class="shell" hidden>
   <nav class="sidebar" aria-label="Sections">
     <div class="brand">DealerDoor</div>
     <a href="#overview" data-roles="lead office admin">Overview</a>
+    <a href="#map" data-roles="lead office admin">Map</a>
     <a href="#review" data-roles="lead admin">Review queue</a>
     <a href="#routes" data-roles="lead admin">Routes</a>
     <a href="#dnk" data-roles="lead office admin">Do-not-knock</a>
@@ -51,6 +74,21 @@
     <section data-view="overview">
       <h2>Overview <small class="muted">last 90 days</small></h2>
       <div id="metrics" class="tiles"></div>
+    </section>
+
+    <section data-view="map">
+      <h2>Map <small class="muted">where leads and sales happened</small></h2>
+      <form id="map-filter" class="filters">
+        <select name="status" aria-label="Lead status">
+          <option value="">All lead statuses</option>
+          <option>interested</option><option>appointment</option><option>not_serviceable</option><option>closed</option>
+        </select>
+        <input name="from" type="date" aria-label="From date">
+        <input name="to" type="date" aria-label="To date">
+        <button type="submit">Filter</button>
+      </form>
+      <div id="leaflet-map" class="map" role="region" aria-label="Map of leads, sales and do-not-knock addresses"></div>
+      <p id="map-note" class="muted map-note" role="status"></p>
     </section>
 
     <section data-view="review">
@@ -225,6 +263,8 @@
 <dialog id="order-dialog">
   <form method="dialog" class="dialog-head"><h2 id="order-title">Order</h2><button class="link" aria-label="Close">✕</button></form>
   <div id="order-summary" class="muted"></div>
+  <div id="order-minimap" class="minimap" hidden role="img" aria-label="Where this order was taken"></div>
+  <button type="button" id="order-show-map" class="small" hidden>Show on the big map</button>
   <form id="order-edit" class="grid">
     <label>AT&amp;T order ref <input name="att_order_ref"></label>
     <label>Cancel reason <input name="cancelled_reason" placeholder="only to cancel"></label>

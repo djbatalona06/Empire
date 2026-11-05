@@ -1,15 +1,15 @@
 # 05 · Backend Schema
 
-Source of truth: [`worker/migrations/0001_init.sql`](../worker/migrations/0001_init.sql) (tables) and [`0002_seed.sql`](../worker/migrations/0002_seed.sql) (reference data). Demo users: [`worker/seed/dev.sql`](../worker/seed/dev.sql), local only.
+Source of truth: [`worker/migrations/0001_init.sql`](../worker/migrations/0001_init.sql) (tables), [`0002_seed.sql`](../worker/migrations/0002_seed.sql) (reference data), [`0003_indexes.sql`](../worker/migrations/0003_indexes.sql) (indexes) and [`0004_owner_gate.sql`](../worker/migrations/0004_owner_gate.sql) (two-step sign-in columns). Demo users: [`worker/seed/dev.sql`](../worker/seed/dev.sql), local only.
 
 ## Tables
 
 | Group | Table | Purpose |
 |---|---|---|
-| **People & auth** | `users` | Everyone. `role` ∈ customer, coworker, lead, office, admin. `crew_id`, `locale` (en/es), optional `password_hash` (PBKDF2) |
+| **People & auth** | `users` | Everyone. `role` ∈ customer, coworker, lead, office, admin. `crew_id`, `locale` (en/es), optional `password_hash` (PBKDF2). Migration `0004`: `require_password` (1 = needs the password step), `failed_attempts`, `locked_until` (15 min after 5 wrong passwords) |
 | | `crews` | Coworker teams with a lead |
 | | `magic_links` | Hashed one-time sign-in tokens, 15 min |
-| | `sessions` | Hashed rotating refresh tokens, 30 days |
+| | `sessions` | Hashed rotating refresh tokens, 30 days. `aal` = trust level the token was issued at (1 = emailed link, 2 = password), so a refresh can never raise it |
 | | `devices` | APNs tokens per user (Android push via FCM is a follow-up) |
 | **Territory** | `service_area` | SeaTac GeoJSON polygon (approximate until replaced) |
 | | `properties` | One row per address: coords, `seatac_valid`, `needs_review`, `do_not_knock` + reason |
@@ -73,4 +73,5 @@ erDiagram
 
 - Pulse anonymity protects against dealer staff. Someone with both database access **and** `JWT_SECRET` could recompute hashes. Keep the secret in Cloudflare Secrets only.
 - Crew pulse averages are hidden below 3 responses so one person can't be singled out.
+- The owner's **first** password is set from an emailed-link session, so until it exists the mailbox is the only proof of identity. Set it right after the first deploy. After that, changing it needs the current password, and there is no reset by email.
 - The "do-not-knock check-ins" metric counts check-ins at addresses that are on the list today, including knocks made before an address was added.

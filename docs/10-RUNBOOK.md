@@ -37,6 +37,8 @@ Add or change a secret: `npx wrangler secret put NAME --env <env>`.
 | `JWT_SECRET` | Required, 32+ characters (the API refuses to start if missing or short) | Everyone is signed out once. Do this if you think it leaked. |
 | `FILE_SIGNING_SECRET` | Optional (falls back to `JWT_SECRET`) | Photo links already handed out stop working (they last 15 minutes anyway). |
 | `PULSE_HASH_SECRET` | Optional (falls back to `JWT_SECRET`) | **Do not change after launch.** Old weekly check-in answers would no longer match their owners, and people could answer twice in a week. To move away from `JWT_SECRET` safely, set it before the first real check-in. |
+| `MASTER_EMAIL` | The owner's address | A new address becomes owner the next time it signs in; the old one keeps its account and password requirement. Deactivate the old user in Users if they should lose access. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | For email by SMTP (port 465 or 587) | Put the new value, then deploy. If `SMTP_HOST` is empty the app uses Resend, then only logs the email. |
 | `STRIPE_*`, `RESEND_API_KEY`, `APNS_*` | See the launch checklist | Put the new value, then deploy. |
 
 Generate a good one with `openssl rand -base64 48`.
@@ -50,4 +52,14 @@ Generate a good one with `openssl rand -base64 48`.
 ## Someone is locked out
 
 - Staff member: an admin opens Users and sets them active again, then they ask for a new sign-in link.
+- **Locked after wrong passwords:** wait 15 minutes, or an admin runs the unlock command below.
+- **Owner forgot the password:** there is no "reset by email" on purpose (whoever reads the mailbox could take the account). Clear the password from the command line, then sign in with the emailed link and create a new one:
+
+  ```bash
+  npx wrangler d1 execute DB --remote --env <env> \
+    --command "UPDATE users SET password_hash = NULL, failed_attempts = 0, locked_until = NULL WHERE email = 'owner@your-domain.com'"
+  ```
+
+- **Unlock without clearing the password:** the same command without `password_hash = NULL,`.
+- **Emails are not arriving:** open Workers Logs and search for `email_failed`. It shows the reason (wrong SMTP login, port blocked, server refused the sender) and never the message or the password.
 - The only admin is locked out: the API will not let the last active admin be removed, but if it ever happens, run the first-admin command in `docs/06-IMPLEMENTATION-PLAN.md` ("Deploy commands").
