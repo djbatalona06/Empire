@@ -37,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.dealerdoor.app.R
+import com.dealerdoor.app.core.Api
 import com.dealerdoor.app.core.Auth
 import com.dealerdoor.app.core.AuthState
 import com.dealerdoor.app.core.Role
@@ -71,6 +73,7 @@ fun LoginScreen() {
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val checkEmail = stringResource(R.string.check_email_link)
+    val uriHandler = LocalUriHandler.current
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().padding(24.dp),
@@ -125,6 +128,9 @@ fun LoginScreen() {
         }
         message?.let { Text(it) }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("login.error")) }
+        TextButton(onClick = { uriHandler.openUri("${Api.base}/privacy") }, modifier = Modifier.testTag("login.privacy")) {
+            Text(stringResource(R.string.privacy_policy))
+        }
     }
 }
 

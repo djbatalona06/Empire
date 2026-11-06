@@ -12,6 +12,7 @@ import feedback from './routes/feedback';
 import field from './routes/field';
 import files from './routes/files';
 import invoices from './routes/invoices';
+import exportCsv from './routes/export';
 import orders from './routes/orders';
 
 const app = new Hono<AppEnv>();
@@ -50,7 +51,7 @@ app.get('/v1/health', async (c) => {
   return c.json({ ok, env: c.env.ENVIRONMENT, checks }, ok ? 200 : 503);
 });
 app.route('/v1/auth', auth);
-for (const r of [me, field, orders, files, invoices, feedback, admin]) app.route('/v1', r);
+for (const r of [me, field, orders, files, invoices, feedback, admin, exportCsv]) app.route('/v1', r);
 
 // Magic links open the iOS app (universal links) or the Android app (App Links); on a desktop they land in the admin console.
 app.get('/auth/verify', (c) => c.redirect(`/#magic=${encodeURIComponent(c.req.query('token') ?? '')}`));

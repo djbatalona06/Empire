@@ -11,7 +11,7 @@ Customers track their install, pay dealer fees and leave feedback. Field reps wa
 | Android app | [`android/`](android) | Native Kotlin + Jetpack Compose (Android 8+), Gradle, Compose UI tests |
 | Browser + API tests | [`e2e/`](e2e) | Playwright: admin console at desktop and phone width, plus the API flow both apps use |
 | CI helpers | [`ci/`](ci) | Publishes test screenshots to the `ci-shots` branch |
-| Planning docs | [`docs/`](docs) | 01 PRD · 02 TRD · 03 App Flow · 04 UI/UX · 05 Schema · 06 Implementation Plan · 07 Launch Checklist · 08 Mac setup |
+| Planning docs | [`docs/`](docs) | 01 PRD · 02 TRD · 03 App Flow · 04 UI/UX · 05 Schema · 06 Implementation Plan · 07 Launch Checklist · 08 Mac setup · 09 Remaining work · 10 Runbook |
 
 ## What each app does
 
@@ -104,9 +104,10 @@ Each UI-test job saves a screenshot of every screen and pushes them to the [`ci-
 | Feedback | `POST feedback/customer` · `GET feedback/customer/mine` · `GET feedback/summary` · `GET feedback/customer` · `PATCH feedback/customer/:id/status` |
 | People | `GET pulse/status` · `POST pulse` · `POST kudos` · `GET coworkers` · `GET scorecards/me` · `GET scorecards/crew` · `GET admin/scorecards` |
 | Files | `POST uploads` · `POST files/sign` · `PUT/GET files/*` (signed) · `GET catalog` · `GET consent-texts` |
-| Admin | `admin/users` · `crews` · `routes` · `dnk` · `properties` · `service-area` · `catalog` · `coverage` · `commissions` · `conflicts` · `settings` · `audit` · `metrics` |
+| Admin | `admin/users` · `crews` · `routes` · `dnk` · `properties` · `service-area` · `catalog` · `coverage` · `commissions` · `conflicts` · `settings` · `audit` · `metrics` · `GET admin/export/:kind` (CSV: leads, orders, invoices, commissions) |
+| Health | `GET health` (database + file storage check, no sign-in) |
 
-Outside `/v1`: `GET /auth/verify` (magic-link landing), `/.well-known/apple-app-site-association`, `/.well-known/assetlinks.json`.
+Outside `/v1`: `GET /auth/verify` (magic-link landing), `/.well-known/apple-app-site-association`, `/.well-known/assetlinks.json`, and the public privacy policy page `/privacy`.
 
 ## Before launch
 

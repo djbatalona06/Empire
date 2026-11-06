@@ -2,6 +2,15 @@
 
 Status key: ✅ built in this repo · 🧪 verified by automated test or browser run · 🙋 needs a person (accounts, legal, Apple)
 
+## Phase 0 · Safety & operations
+
+- ✅🧪 The API refuses to start with a missing or short `JWT_SECRET`; optional dedicated file-signing and pulse secrets
+- ✅🧪 Admin-only guards on risky routes; the last active admin cannot be removed
+- ✅🧪 `/v1/health` checks the database and file storage (503 if either fails); every response has an `x-request-id`
+- ✅ Database indexes (`0003_indexes.sql`) and deploy checks (secret present, restore point printed, health call after deploy)
+- ✅ [Runbook](10-RUNBOOK.md) for outages, rollback, database restore and secrets
+- 🙋 Point an uptime monitor at `/v1/health`
+
 ## Phase 1 · Discovery & schema (weeks 1–2)
 
 - ✅ D1 schema + seed (`worker/migrations`)
@@ -61,6 +70,16 @@ Status key: ✅ built in this repo · 🧪 verified by automated test or browser
 ## Phase 8 · SeaTac pilot (weeks 13–14)
 
 - 3 routes, 10 coworkers, 20 customers. Watch Admin → Overview daily; the compliance tiles must stay at 0.
+
+## Phase 9 · Gaps found in review
+
+The full checklist, with sizes and who does each item, is in [09-REMAINING-WORK.md](09-REMAINING-WORK.md). In short:
+
+- ✅🧪 Privacy policy page at `/privacy` (draft text; 🙋 counsel approves and fills the brackets)
+- ✅🧪 CSV export of leads, orders, invoices and commissions (Admin console, office and admin)
+- ⏳ Account deletion and customer cancellation request
+- ⏳ Two-step sign-in for office and admin
+- ⏳ Android push (needs a Firebase project) and notification links
 
 ## Deploy commands
 

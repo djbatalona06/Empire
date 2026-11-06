@@ -42,6 +42,10 @@ struct LoginView: View {
                 }
                 .disabled(busy || !email.contains("@"))
                 .accessibilityIdentifier("login.submit")
+                Section {
+                    Link("Privacy policy", destination: APIClient.shared.base.appendingPathComponent("privacy"))
+                        .accessibilityIdentifier("login.privacy")
+                }
             }
             .navigationTitle("Sign in")
         }

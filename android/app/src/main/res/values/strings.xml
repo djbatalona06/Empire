@@ -9,6 +9,7 @@
     <string name="sign_in">Sign in</string>
     <string name="email_me_link">Email me a sign-in link</string>
     <string name="check_email_link">Check your email and tap the link on this phone.</string>
+    <string name="privacy_policy">Privacy policy</string>
     <string name="locked">DealerDoor is locked</string>
     <string name="unlock">Unlock</string>
     <string name="unlock_app">Unlock DealerDoor</string>
