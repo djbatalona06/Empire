@@ -50,7 +50,7 @@ describe('csv export', () => {
 
   it('exports real rows, defuses formulas, and writes an audit row', async () => {
     const { office, lead } = await orderFlow();
-    await env.DB.prepare('UPDATE leads SET customer_name = ? WHERE id = ?').bind('=SUM(1+1)', lead.id).run();
+    await env.empire_accounts.prepare('UPDATE leads SET customer_name = ? WHERE id = ?').bind('=SUM(1+1)', lead.id).run();
     const { SELF } = await import('cloudflare:test');
     const res = await SELF.fetch('http://dealerdoor.test/v1/admin/export/leads', { headers: { authorization: `Bearer ${office.token}` } });
     expect(res.status).toBe(200);
@@ -60,7 +60,7 @@ describe('csv export', () => {
     expect(text).toContain(lead.id);
     expect(text).toContain("'=SUM(1+1)");
     expect(text).not.toMatch(/,=SUM/);
-    const logged = await env.DB.prepare(`SELECT COUNT(*) AS n FROM audit_log WHERE action = 'export.csv' AND actor_id = ?`).bind(office.id).first<{ n: number }>();
+    const logged = await env.empire_accounts.prepare(`SELECT COUNT(*) AS n FROM audit_log WHERE action = 'export.csv' AND actor_id = ?`).bind(office.id).first<{ n: number }>();
     expect(logged!.n).toBe(1);
   });
 

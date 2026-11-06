@@ -25,14 +25,14 @@ export interface PushMessage {
 }
 
 export async function pushToUser(env: Env, userId: string, build: (locale: string) => PushMessage) {
-  const user = await env.DB.prepare('SELECT locale FROM users WHERE id = ?').bind(userId).first<{ locale: string }>();
+  const user = await env.empire_accounts.prepare('SELECT locale FROM users WHERE id = ?').bind(userId).first<{ locale: string }>();
   if (!user) return;
   const msg = build(user.locale);
   if (!env.APNS_KEY_P8 || !env.APNS_KEY_ID || !env.APNS_TEAM_ID) {
     console.log('[push:disabled]', userId, msg.title);
     return;
   }
-  const { results } = await env.DB.prepare('SELECT apns_token, env FROM devices WHERE user_id = ?').bind(userId).all<{ apns_token: string; env: string }>();
+  const { results } = await env.empire_accounts.prepare('SELECT apns_token, env FROM devices WHERE user_id = ?').bind(userId).all<{ apns_token: string; env: string }>();
   const jwt = await apnsToken(env);
   await Promise.all(
     results.map(async (d) => {
@@ -44,7 +44,7 @@ export async function pushToUser(env: Env, userId: string, build: (locale: strin
       }).catch(() => null);
       // 410 Gone / 400 BadDeviceToken: the app was deleted or token rotated.
       if (res && (res.status === 410 || res.status === 400)) {
-        await env.DB.prepare('DELETE FROM devices WHERE apns_token = ?').bind(d.apns_token).run();
+        await env.empire_accounts.prepare('DELETE FROM devices WHERE apns_token = ?').bind(d.apns_token).run();
       }
     }),
   );

@@ -42,12 +42,12 @@ function rejectDnk(db: D1Database, u: AuthUser, entity: string, prop: Property, 
 // ---- Map data ------------------------------------------------------------
 
 app.get('/service-area', staff, async (c) => {
-  const { results } = await c.env.DB.prepare('SELECT id, name, geojson FROM service_area WHERE active = 1').all<{ id: string; name: string; geojson: string }>();
+  const { results } = await c.env.empire_accounts.prepare('SELECT id, name, geojson FROM service_area WHERE active = 1').all<{ id: string; name: string; geojson: string }>();
   return c.json(results.map((r) => ({ ...r, geojson: JSON.parse(r.geojson) })));
 });
 
 app.get('/dnk/map', staff, async (c) => {
-  const { results } = await c.env.DB.prepare('SELECT id, lat, lng FROM properties WHERE do_not_knock = 1 AND lat IS NOT NULL').all();
+  const { results } = await c.env.empire_accounts.prepare('SELECT id, lat, lng FROM properties WHERE do_not_knock = 1 AND lat IS NOT NULL').all();
   return c.json(results);
 });
 
@@ -55,11 +55,11 @@ app.get('/routes/mine', staff, async (c) => {
   const date = c.req.query('date') ?? todayPacific();
   if (!isoDate.test(date)) fail(400, 'invalid_date');
   const u = c.get('user');
-  const { results: routes } = await c.env.DB.prepare('SELECT id, name, route_date, permit_ref, status FROM routes WHERE coworker_id = ? AND route_date >= ? ORDER BY route_date LIMIT 14')
+  const { results: routes } = await c.env.empire_accounts.prepare('SELECT id, name, route_date, permit_ref, status FROM routes WHERE coworker_id = ? AND route_date >= ? ORDER BY route_date LIMIT 14')
     .bind(u.id, date)
     .all<{ id: string }>();
   if (!routes.length) return c.json([]);
-  const { results: stops } = await c.env.DB.prepare(
+  const { results: stops } = await c.env.empire_accounts.prepare(
     `SELECT s.id, s.route_id, s.sort_order, s.status, p.id AS property_id, p.address, p.lat, p.lng, p.do_not_knock
      FROM route_stops s JOIN properties p ON p.id = s.property_id
      WHERE s.route_id IN (${routes.map(() => '?').join(',')}) ORDER BY s.sort_order`,
@@ -72,7 +72,7 @@ app.get('/routes/mine', staff, async (c) => {
 /** Pre-check while a rep stands at a door: in SeaTac? on the do-not-knock list? */
 app.post('/properties/validate', staff, async (c) => {
   const body = await readJson(c);
-  const prop = await upsertProperty(c.env.DB, {
+  const prop = await upsertProperty(c.env.empire_accounts, {
     address: reqStr(body, 'address', { max: 300 }),
     lat: num(body, 'lat', { min: -90, max: 90, optional: true }),
     lng: num(body, 'lng', { min: -180, max: 180, optional: true }),
@@ -86,45 +86,45 @@ app.post('/check-ins', staff, async (c) => {
   const body = await readJson(c);
   const u = c.get('user');
   const id = clientId(body.id);
-  const replay = await c.env.DB.prepare('SELECT * FROM check_ins WHERE id = ? AND coworker_id = ?').bind(id, u.id).first();
+  const replay = await c.env.empire_accounts.prepare('SELECT * FROM check_ins WHERE id = ? AND coworker_id = ?').bind(id, u.id).first();
   if (replay) return c.json(replay);
 
-  const prop = await getProperty(c.env.DB, reqStr(body, 'property_id', { max: 64 }));
+  const prop = await getProperty(c.env.empire_accounts, reqStr(body, 'property_id', { max: 64 }));
   const lat = reqNum(body, 'lat', { min: -90, max: 90 });
   const lng = reqNum(body, 'lng', { min: -180, max: 180 });
   const outcome = oneOf(body, 'outcome', ['no_answer', 'not_interested', 'interested', 'come_back'] as const)!;
   const stopId = str(body, 'route_stop_id', { optional: true, max: 64 });
-  if (prop.do_not_knock) return rejectDnk(c.env.DB, u, 'check_in', prop, body);
+  if (prop.do_not_knock) return rejectDnk(c.env.empire_accounts, u, 'check_in', prop, body);
 
   let distance: number | null = null;
   if (prop.lat != null && prop.lng != null) {
     distance = Math.round(haversineMeters(lat, lng, prop.lat, prop.lng));
-    const limit = Number(await setting(c.env.DB, 'geofence_meters', '100'));
+    const limit = Number(await setting(c.env.empire_accounts, 'geofence_meters', '100'));
     if (distance > limit) {
-      const conflict_id = await recordConflict(c.env.DB, u.id, 'check_in', body, `too_far:${distance}m`);
+      const conflict_id = await recordConflict(c.env.empire_accounts, u.id, 'check_in', body, `too_far:${distance}m`);
       fail(422, 'not_at_property', `You are ${distance} m from this address. Check in at the door.`, { conflict_id, distance_m: distance });
     }
   }
   if (stopId) {
-    const stop = await c.env.DB.prepare('SELECT s.id FROM route_stops s JOIN routes r ON r.id = s.route_id WHERE s.id = ? AND r.coworker_id = ? AND s.property_id = ?')
+    const stop = await c.env.empire_accounts.prepare('SELECT s.id FROM route_stops s JOIN routes r ON r.id = s.route_id WHERE s.id = ? AND r.coworker_id = ? AND s.property_id = ?')
       .bind(stopId, u.id, prop.id)
       .first();
     if (!stop) fail(403, 'not_your_stop');
   }
 
   const stmts = [
-    c.env.DB.prepare('INSERT INTO check_ins (id, route_stop_id, property_id, coworker_id, lat, lng, distance_m, outcome, photo_key, client_created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(
+    c.env.empire_accounts.prepare('INSERT INTO check_ins (id, route_stop_id, property_id, coworker_id, lat, lng, distance_m, outcome, photo_key, client_created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(
       id, stopId ?? null, prop.id, u.id, lat, lng, distance, outcome,
       str(body, 'photo_key', { optional: true, max: 200 }) ?? null,
       str(body, 'client_created_at', { optional: true, pattern: isoDateTime }) ?? null,
     ),
   ];
   if (stopId) {
-    stmts.push(c.env.DB.prepare(`UPDATE route_stops SET status = 'knocked' WHERE id = ?`).bind(stopId));
-    stmts.push(c.env.DB.prepare(`UPDATE routes SET status = 'in_progress' WHERE id = (SELECT route_id FROM route_stops WHERE id = ?) AND status = 'assigned'`).bind(stopId));
+    stmts.push(c.env.empire_accounts.prepare(`UPDATE route_stops SET status = 'knocked' WHERE id = ?`).bind(stopId));
+    stmts.push(c.env.empire_accounts.prepare(`UPDATE routes SET status = 'in_progress' WHERE id = (SELECT route_id FROM route_stops WHERE id = ?) AND status = 'assigned'`).bind(stopId));
   }
-  await c.env.DB.batch(stmts);
-  return c.json(await c.env.DB.prepare('SELECT * FROM check_ins WHERE id = ?').bind(id).first(), 201);
+  await c.env.empire_accounts.batch(stmts);
+  return c.json(await c.env.empire_accounts.prepare('SELECT * FROM check_ins WHERE id = ?').bind(id).first(), 201);
 });
 
 // ---- Leads ---------------------------------------------------------------
@@ -139,15 +139,15 @@ app.get('/leads', staff, async (c) => {
   const binds = [...args];
   if (status) (sql += ' AND l.status = ?'), binds.push(status);
   if (q) (sql += ' AND (l.customer_name LIKE ? OR p.address LIKE ?)'), binds.push(`%${q}%`, `%${q}%`);
-  const { results } = await c.env.DB.prepare(`${sql} ORDER BY l.created_at DESC LIMIT 200`).bind(...binds).all();
+  const { results } = await c.env.empire_accounts.prepare(`${sql} ORDER BY l.created_at DESC LIMIT 200`).bind(...binds).all();
   return c.json(results);
 });
 
 app.get('/leads/:id', staff, async (c) => {
-  const lead = await loadLead(c.env.DB, c.get('user'), c.req.param('id'));
+  const lead = await loadLead(c.env.empire_accounts, c.get('user'), c.req.param('id'));
   const [consents, appointments] = await Promise.all([
-    c.env.DB.prepare('SELECT id, kind, text_version, accepted_at, rep_id, address_snapshot FROM consents WHERE lead_id = ?').bind(lead.id).all(),
-    c.env.DB.prepare('SELECT * FROM appointments WHERE lead_id = ? ORDER BY scheduled_at').bind(lead.id).all(),
+    c.env.empire_accounts.prepare('SELECT id, kind, text_version, accepted_at, rep_id, address_snapshot FROM consents WHERE lead_id = ?').bind(lead.id).all(),
+    c.env.empire_accounts.prepare('SELECT * FROM appointments WHERE lead_id = ? ORDER BY scheduled_at').bind(lead.id).all(),
   ]);
   const sign = (k: unknown) => (typeof k === 'string' ? signFileUrl(new URL(c.req.url).origin, fileSecret(c.env), 'GET', k) : null);
   return c.json({
@@ -165,14 +165,14 @@ app.post('/leads', staff, async (c) => {
   const body = await readJson(c);
   const u = c.get('user');
   const id = clientId(body.id);
-  const replay = await c.env.DB.prepare('SELECT id, status FROM leads WHERE id = ? AND coworker_id = ?').bind(id, u.id).first();
+  const replay = await c.env.empire_accounts.prepare('SELECT id, status FROM leads WHERE id = ? AND coworker_id = ?').bind(id, u.id).first();
   if (replay) return c.json(replay);
 
   const lat = num(body, 'lat', { min: -90, max: 90, optional: true });
   const lng = num(body, 'lng', { min: -180, max: 180, optional: true });
   const propertyId = str(body, 'property_id', { optional: true, max: 64 });
-  const prop = propertyId ? await getProperty(c.env.DB, propertyId) : await upsertProperty(c.env.DB, { address: reqStr(body, 'address', { max: 300 }), lat, lng });
-  if (prop.do_not_knock) return rejectDnk(c.env.DB, u, 'lead', prop, body);
+  const prop = propertyId ? await getProperty(c.env.empire_accounts, propertyId) : await upsertProperty(c.env.empire_accounts, { address: reqStr(body, 'address', { max: 300 }), lat, lng });
+  if (prop.do_not_knock) return rejectDnk(c.env.empire_accounts, u, 'lead', prop, body);
 
   const name = reqStr(body, 'customer_name', { max: 120 });
   const phone = str(body, 'phone', { optional: true, max: 20, pattern: /^\+?[0-9 ()-]{7,20}$/ });
@@ -184,17 +184,17 @@ app.post('/leads', staff, async (c) => {
   if (body.tcpa_accepted !== true) fail(422, 'tcpa_consent_required');
   if (body.disclosure_accepted !== true) fail(422, 'disclosure_ack_required');
   const version = reqStr(body, 'consent_text_version', { max: 20 });
-  const known = await c.env.DB.prepare(`SELECT COUNT(DISTINCT kind) AS n FROM consent_texts WHERE version = ? AND active = 1`).bind(version).first<{ n: number }>();
+  const known = await c.env.empire_accounts.prepare(`SELECT COUNT(DISTINCT kind) AS n FROM consent_texts WHERE version = ? AND active = 1`).bind(version).first<{ n: number }>();
   if (known?.n !== 2) fail(422, 'unknown_consent_version');
   const acceptedAt = str(body, 'consented_at', { optional: true, pattern: isoDateTime }) ?? new Date().toISOString();
   const signature = str(body, 'signature_key', { optional: true, max: 200 }) ?? null;
 
   const consent = (kind: string) =>
-    c.env.DB.prepare('INSERT INTO consents (id, lead_id, kind, text_version, accepted_at, rep_id, property_id, address_snapshot, signature_key, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(
+    c.env.empire_accounts.prepare('INSERT INTO consents (id, lead_id, kind, text_version, accepted_at, rep_id, property_id, address_snapshot, signature_key, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(
       crypto.randomUUID(), id, kind, version, acceptedAt, u.id, prop.id, prop.address, signature, lat ?? null, lng ?? null,
     );
-  await c.env.DB.batch([
-    c.env.DB.prepare(
+  await c.env.empire_accounts.batch([
+    c.env.empire_accounts.prepare(
       `INSERT INTO leads (id, property_id, coworker_id, customer_name, phone, email, product_interest, status, tcpa_consent_at, consent_text_version, disclosure_ack_at, signature_key, photo_key, client_created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'interested', ?, ?, ?, ?, ?, ?)`,
     ).bind(id, prop.id, u.id, name, phone ?? null, mail ?? null, JSON.stringify(interest), acceptedAt, version, acceptedAt, signature,
@@ -207,13 +207,13 @@ app.post('/leads', staff, async (c) => {
 
 app.patch('/leads/:id', staff, async (c) => {
   const u = c.get('user');
-  const lead = await loadLead(c.env.DB, u, c.req.param('id'));
+  const lead = await loadLead(c.env.empire_accounts, u, c.req.param('id'));
   const body = await readJson(c);
   const status = oneOf(body, 'status', ['new', 'interested', 'closed', 'not_serviceable'] as const, true);
   const reason = str(body, 'reason', { optional: true, max: 300 });
   if ((status === 'closed' || status === 'not_serviceable') && !reason) fail(400, 'reason_required');
   if (lead.status === 'order' && status) fail(409, 'lead_has_order');
-  await c.env.DB.prepare(
+  await c.env.empire_accounts.prepare(
     `UPDATE leads SET status = COALESCE(?, status),
        closed_reason = CASE WHEN ? = 'closed' THEN ? ELSE closed_reason END,
        not_serviceable_reason = CASE WHEN ? = 'not_serviceable' THEN ? ELSE not_serviceable_reason END,
@@ -229,18 +229,18 @@ app.patch('/leads/:id', staff, async (c) => {
 
 /** Qualification: coverage by ZIP (+street) → eligible catalog items. No coverage marks the lead not serviceable. */
 app.post('/leads/:id/serviceability', staff, async (c) => {
-  const lead = await loadLead(c.env.DB, c.get('user'), c.req.param('id'));
+  const lead = await loadLead(c.env.empire_accounts, c.get('user'), c.req.param('id'));
   const street = normalizeAddress(lead.address).replace(/^\d+[A-Z]?\s+/, '').split(' ').slice(0, 3).join(' ');
-  const { results: cov } = await c.env.DB.prepare(`SELECT tech, MAX(max_speed_mbps) AS max_speed FROM coverage WHERE zip = ? AND (street_norm IS NULL OR ? LIKE street_norm || '%') GROUP BY tech`)
+  const { results: cov } = await c.env.empire_accounts.prepare(`SELECT tech, MAX(max_speed_mbps) AS max_speed FROM coverage WHERE zip = ? AND (street_norm IS NULL OR ? LIKE street_norm || '%') GROUP BY tech`)
     .bind(lead.zip ?? '', street)
     .all<{ tech: string; max_speed: number }>();
   if (!cov.length) {
     const reason = lead.zip ? 'No coverage on file for this address' : 'Address has no ZIP code';
-    await c.env.DB.prepare(`UPDATE leads SET status = 'not_serviceable', not_serviceable_reason = ?, updated_at = datetime('now') WHERE id = ? AND status <> 'order'`).bind(reason, lead.id).run();
+    await c.env.empire_accounts.prepare(`UPDATE leads SET status = 'not_serviceable', not_serviceable_reason = ?, updated_at = datetime('now') WHERE id = ? AND status <> 'order'`).bind(reason, lead.id).run();
     return c.json({ serviceable: false, reason, items: [] });
   }
   const techs = cov.map((r) => r.tech);
-  const { results: items } = await c.env.DB.prepare(
+  const { results: items } = await c.env.empire_accounts.prepare(
     `SELECT * FROM catalog_items WHERE active = 1 AND (required_tech IS NULL OR required_tech IN (${techs.map(() => '?').join(',')})) ORDER BY kind, monthly_price_cents`,
   )
     .bind(...techs)
@@ -254,29 +254,29 @@ app.post('/appointments', staff, async (c) => {
   const body = await readJson(c);
   const u = c.get('user');
   const id = clientId(body.id);
-  const replay = await c.env.DB.prepare('SELECT * FROM appointments WHERE id = ? AND created_by = ?').bind(id, u.id).first();
+  const replay = await c.env.empire_accounts.prepare('SELECT * FROM appointments WHERE id = ? AND created_by = ?').bind(id, u.id).first();
   if (replay) return c.json(replay);
-  const lead = await loadLead(c.env.DB, u, reqStr(body, 'lead_id', { max: 64 }));
+  const lead = await loadLead(c.env.empire_accounts, u, reqStr(body, 'lead_id', { max: 64 }));
   if (lead.status === 'not_serviceable' || lead.status === 'closed') fail(409, 'lead_not_open');
   const at = reqStr(body, 'scheduled_at', { pattern: isoDateTime });
   const end = str(body, 'window_end', { optional: true, pattern: isoDateTime });
   if (Date.parse(at) < Date.now() - 3600_000) fail(400, 'appointment_in_past');
   if (end && Date.parse(end) <= Date.parse(at)) fail(400, 'invalid_window');
   const kind = oneOf(body, 'kind', ['install', 'consult'] as const, true) ?? 'install';
-  await c.env.DB.batch([
-    c.env.DB.prepare('INSERT INTO appointments (id, lead_id, kind, scheduled_at, window_end, created_by) VALUES (?, ?, ?, ?, ?, ?)').bind(id, lead.id, kind, at, end ?? null, u.id),
-    c.env.DB.prepare(`UPDATE leads SET status = 'appointment', updated_at = datetime('now') WHERE id = ? AND status IN ('new','interested')`).bind(lead.id),
+  await c.env.empire_accounts.batch([
+    c.env.empire_accounts.prepare('INSERT INTO appointments (id, lead_id, kind, scheduled_at, window_end, created_by) VALUES (?, ?, ?, ?, ?, ?)').bind(id, lead.id, kind, at, end ?? null, u.id),
+    c.env.empire_accounts.prepare(`UPDATE leads SET status = 'appointment', updated_at = datetime('now') WHERE id = ? AND status IN ('new','interested')`).bind(lead.id),
   ]);
-  return c.json(await c.env.DB.prepare('SELECT * FROM appointments WHERE id = ?').bind(id).first(), 201);
+  return c.json(await c.env.empire_accounts.prepare('SELECT * FROM appointments WHERE id = ?').bind(id).first(), 201);
 });
 
 app.patch('/appointments/:id', staff, async (c) => {
   const u = c.get('user');
-  const appt = await c.env.DB.prepare('SELECT lead_id FROM appointments WHERE id = ?').bind(c.req.param('id')).first<{ lead_id: string }>();
+  const appt = await c.env.empire_accounts.prepare('SELECT lead_id FROM appointments WHERE id = ?').bind(c.req.param('id')).first<{ lead_id: string }>();
   if (!appt) fail(404, 'appointment_not_found');
-  await loadLead(c.env.DB, u, appt!.lead_id); // scope check
+  await loadLead(c.env.empire_accounts, u, appt!.lead_id); // scope check
   const status = oneOf(await readJson(c), 'status', ['set', 'completed', 'no_show', 'cancelled'] as const)!;
-  await c.env.DB.prepare('UPDATE appointments SET status = ? WHERE id = ?').bind(status, c.req.param('id')).run();
+  await c.env.empire_accounts.prepare('UPDATE appointments SET status = ? WHERE id = ?').bind(status, c.req.param('id')).run();
   return c.json({ ok: true });
 });
 

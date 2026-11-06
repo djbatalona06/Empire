@@ -18,7 +18,7 @@ async function completeStage(officeToken: string, orderId: string, stage: string
 
 describe('pure helpers', () => {
   it('validates SeaTac polygon membership', async () => {
-    const { geojson } = (await env.DB.prepare(`SELECT geojson FROM service_area WHERE id = 'seatac'`).first<{ geojson: string }>())!;
+    const { geojson } = (await env.empire_accounts.prepare(`SELECT geojson FROM service_area WHERE id = 'seatac'`).first<{ geojson: string }>())!;
     expect(pointInArea(SEATAC.lat, SEATAC.lng, JSON.parse(geojson))).toBe(true);
     expect(pointInArea(SEATTLE.lat, SEATTLE.lng, JSON.parse(geojson))).toBe(false);
   });
@@ -55,7 +55,7 @@ describe('auth', () => {
     expect(next.status).toBe(200);
     expect((await api('/v1/auth/refresh', { body: { refresh_token: tokens.refresh_token } })).status).toBe(401);
 
-    await env.DB.prepare('UPDATE users SET active = 0 WHERE id = ?').bind(u.id).run();
+    await env.empire_accounts.prepare('UPDATE users SET active = 0 WHERE id = ?').bind(u.id).run();
     expect((await api('/v1/me', { token: next.body.access_token })).status).toBe(401);
   });
 
@@ -83,7 +83,7 @@ describe('door-to-door compliance', () => {
     const res = await api('/v1/check-ins', { token: rep.token, body: { property_id: dnk, outcome: 'interested', ...SEATAC } });
     expect(res.status).toBe(403);
     expect(res.body.error).toBe('do_not_knock');
-    const conflict = await env.DB.prepare('SELECT reason FROM sync_conflicts WHERE id = ?').bind(res.body.conflict_id).first();
+    const conflict = await env.empire_accounts.prepare('SELECT reason FROM sync_conflicts WHERE id = ?').bind(res.body.conflict_id).first();
     expect(conflict?.reason).toBe('do_not_knock');
     expect((await api('/v1/leads', { token: rep.token, body: leadBody(dnk) })).status).toBe(403);
   });
@@ -107,7 +107,7 @@ describe('door-to-door compliance', () => {
     expect((await api('/v1/leads', { token: rep.token, body: { ...body, tcpa_accepted: false } })).body.error).toBe('tcpa_consent_required');
     expect((await api('/v1/leads', { token: rep.token, body: { ...body, consent_text_version: 'v99' } })).body.error).toBe('unknown_consent_version');
     expect((await api('/v1/leads', { token: rep.token, body })).status).toBe(201);
-    const { results } = await env.DB.prepare('SELECT kind, rep_id, address_snapshot, text_version FROM consents WHERE lead_id = ?').bind(body.id).all();
+    const { results } = await env.empire_accounts.prepare('SELECT kind, rep_id, address_snapshot, text_version FROM consents WHERE lead_id = ?').bind(body.id).all();
     expect(results.map((r) => r.kind).sort()).toEqual(['d2d_disclosure', 'tcpa']);
     expect(results.every((r) => r.rep_id === rep.id && r.text_version === 'v1' && r.address_snapshot)).toBe(true);
   });
@@ -118,7 +118,7 @@ describe('door-to-door compliance', () => {
     const res = await api('/v1/leads', { token: rep.token, body: { ...rest, address: '400 Pine St, Seattle, WA 98101', ...SEATTLE } });
     expect(res.status).toBe(201);
     expect(res.body.out_of_area).toBe(true);
-    const p = await env.DB.prepare('SELECT needs_review FROM properties WHERE id = ?').bind(res.body.property_id).first();
+    const p = await env.empire_accounts.prepare('SELECT needs_review FROM properties WHERE id = ?').bind(res.body.property_id).first();
     expect(p?.needs_review).toBe(1);
   });
 
@@ -132,11 +132,11 @@ describe('door-to-door compliance', () => {
     expect(ok.body.items.some((i: { sku: string }) => i.sku === 'FIBER-1G')).toBe(false);
 
     const uncovered = leadBody(await property({ address: '1 Nowhere Rd, SeaTac, WA 98000' }));
-    await env.DB.prepare(`UPDATE properties SET zip = '98000' WHERE id = ?`).bind(uncovered.property_id).run();
+    await env.empire_accounts.prepare(`UPDATE properties SET zip = '98000' WHERE id = ?`).bind(uncovered.property_id).run();
     await api('/v1/leads', { token: rep.token, body: uncovered });
     const no = await api(`/v1/leads/${uncovered.id}/serviceability`, { token: rep.token, body: {} });
     expect(no.body.serviceable).toBe(false);
-    expect((await env.DB.prepare('SELECT status FROM leads WHERE id = ?').bind(uncovered.id).first())?.status).toBe('not_serviceable');
+    expect((await env.empire_accounts.prepare('SELECT status FROM leads WHERE id = ?').bind(uncovered.id).first())?.status).toBe('not_serviceable');
   });
 
   it('excludes do-not-knock addresses when assigning routes', async () => {
@@ -199,7 +199,7 @@ describe('orders and timeline', () => {
     await api(`/v1/feedback/customer/${pending.id}/status`, { method: 'PATCH', token: admin.token, body: { status: 'approved', admin_note: 'internal only' } });
     expect((await api('/v1/feedback/summary', { token: customerToken })).body.count).toBe(1);
     expect(JSON.stringify((await api('/v1/feedback/customer/mine', { token: customerToken })).body)).not.toContain('internal only');
-    const auditRow = await env.DB.prepare(`SELECT action FROM audit_log WHERE entity_id = ?`).bind(pending.id).first();
+    const auditRow = await env.empire_accounts.prepare(`SELECT action FROM audit_log WHERE entity_id = ?`).bind(pending.id).first();
     expect(auditRow?.action).toBe('feedback.approved');
   });
 
@@ -237,7 +237,7 @@ describe('invoices and payments', () => {
     const paid = await api(`/v1/invoices/${inv.body.id}/pay`, { token: customerToken, body: { method: 'card' } });
     expect(paid.body.invoice.status).toBe('paid');
     expect(paid.body.invoice.amount_paid_cents).toBe(9900);
-    const stage = await env.DB.prepare(`SELECT status FROM order_timeline WHERE order_id = ? AND stage = 'invoice_paid'`).bind(orderId).first();
+    const stage = await env.empire_accounts.prepare(`SELECT status FROM order_timeline WHERE order_id = ? AND stage = 'invoice_paid'`).bind(orderId).first();
     expect(stage?.status).toBe('complete');
   });
 
@@ -250,18 +250,18 @@ describe('invoices and payments', () => {
     expect((await api('/v1/webhooks/stripe', { raw: payload, headers: { 'stripe-signature': `t=${t},v1=deadbeef` } })).status).toBe(400);
     expect((await api('/v1/webhooks/stripe', { raw: payload, headers: good })).status).toBe(200);
     expect((await api('/v1/webhooks/stripe', { raw: payload, headers: good })).status).toBe(200);
-    const row = await env.DB.prepare('SELECT status, amount_paid_cents FROM invoices WHERE id = ?').bind(inv.body.id).first();
+    const row = await env.empire_accounts.prepare('SELECT status, amount_paid_cents FROM invoices WHERE id = ?').bind(inv.body.id).first();
     expect(row).toEqual({ status: 'paid', amount_paid_cents: 5000 });
   });
 
   it('cron marks overdue and sends each reminder once', async () => {
     const { office, orderId } = await orderFlow();
     const inv = await api('/v1/invoices', { token: office.token, body: { order_id: orderId, amount_cents: 5000, payment_term_days: 15, description: 'Setup', send: true } });
-    await env.DB.prepare('UPDATE invoices SET due_date = ? WHERE id = ?').bind(addDays(todayPacific(), -8), inv.body.id).run();
+    await env.empire_accounts.prepare('UPDATE invoices SET due_date = ? WHERE id = ?').bind(addDays(todayPacific(), -8), inv.body.id).run();
     const first = await runDaily(env as never);
     expect(first.reminders_sent).toBeGreaterThanOrEqual(1);
-    expect((await env.DB.prepare('SELECT status FROM invoices WHERE id = ?').bind(inv.body.id).first())?.status).toBe('overdue');
-    expect((await env.DB.prepare('SELECT kind FROM invoice_reminders WHERE invoice_id = ?').bind(inv.body.id).first())?.kind).toBe('T+7');
+    expect((await env.empire_accounts.prepare('SELECT status FROM invoices WHERE id = ?').bind(inv.body.id).first())?.status).toBe('overdue');
+    expect((await env.empire_accounts.prepare('SELECT kind FROM invoice_reminders WHERE invoice_id = ?').bind(inv.body.id).first())?.kind).toBe('T+7');
     const second = await runDaily(env as never);
     expect(second.reminders_sent).toBe(0);
   });
@@ -270,7 +270,7 @@ describe('invoices and payments', () => {
 describe('coworker satisfaction', () => {
   it('keeps pulse anonymous, one per week, with own trend and hidden small crews', async () => {
     const crew = crypto.randomUUID();
-    await env.DB.prepare('INSERT INTO crews (id, name) VALUES (?, ?)').bind(crew, 'Crew A').run();
+    await env.empire_accounts.prepare('INSERT INTO crews (id, name) VALUES (?, ?)').bind(crew, 'Crew A').run();
     const rep = await user('coworker', { crew_id: crew });
     expect((await api('/v1/pulse/status', { token: rep.token })).body.due).toBe(true);
     const scores = { workload_score: 4, safety_score: 5, support_score: 3 };
@@ -278,7 +278,7 @@ describe('coworker satisfaction', () => {
     expect((await api('/v1/pulse', { token: rep.token, body: scores })).status).toBe(409);
     expect((await api('/v1/pulse/status', { token: rep.token })).body.due).toBe(false);
 
-    const row = await env.DB.prepare('SELECT user_id, anonymous FROM pulse_responses WHERE crew_id = ?').bind(crew).first();
+    const row = await env.empire_accounts.prepare('SELECT user_id, anonymous FROM pulse_responses WHERE crew_id = ?').bind(crew).first();
     expect(row).toEqual({ user_id: null, anonymous: 1 });
     expect((await api('/v1/scorecards/me', { token: rep.token })).body.trend[0].workload).toBe(4);
     expect((await api('/v1/scorecards/crew', { token: rep.token })).body.trend).toEqual([]); // n=1 < 3

@@ -47,7 +47,7 @@ describe('device PIN', () => {
     expect(unknown.status).toBe(401);
     expect(unknown.body.error).toBe('invalid_pin');
 
-    await env.DB.prepare('UPDATE users SET active = 0 WHERE id = ?').bind(u.id).run();
+    await env.empire_accounts.prepare('UPDATE users SET active = 0 WHERE id = ?').bind(u.id).run();
     const inactive = await pinLogin(device, '0528');
     expect(inactive.status).toBe(401);
     expect(inactive.body.error).toBe('invalid_pin');

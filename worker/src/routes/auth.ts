@@ -23,7 +23,7 @@ app.post('/login', async (c) => {
   const password = str(body, 'password', { optional: true, max: 200 });
   await rateLimit(c, addr);
 
-  const user = await c.env.DB.prepare('SELECT id, role, locale, password_hash, active FROM users WHERE email = ?')
+  const user = await c.env.empire_accounts.prepare('SELECT id, role, locale, password_hash, active FROM users WHERE email = ?')
     .bind(addr)
     .first<{ id: string; role: 'customer'; locale: string; password_hash: string | null; active: number }>();
 
@@ -35,7 +35,7 @@ app.post('/login', async (c) => {
   let devToken: string | undefined;
   if (user?.active) {
     const token = randomToken();
-    await c.env.DB.prepare(`INSERT INTO magic_links (token_hash, user_id, expires_at) VALUES (?, ?, datetime('now', '+15 minutes'))`)
+    await c.env.empire_accounts.prepare(`INSERT INTO magic_links (token_hash, user_id, expires_at) VALUES (?, ?, datetime('now', '+15 minutes'))`)
       .bind(await sha256(token), user.id)
       .run();
     const link = `${c.env.PUBLIC_BASE_URL}/auth/verify?token=${token}`;
@@ -48,7 +48,7 @@ app.post('/login', async (c) => {
 
 app.post('/verify', async (c) => {
   const token = reqStr(await readJson(c), 'token', { max: 100 });
-  const row = await c.env.DB.prepare(
+  const row = await c.env.empire_accounts.prepare(
     `UPDATE magic_links SET used_at = datetime('now')
      WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')
      RETURNING user_id`,
@@ -56,7 +56,7 @@ app.post('/verify', async (c) => {
     .bind(await sha256(token))
     .first<{ user_id: string }>();
   if (!row) fail(401, 'invalid_or_expired_link');
-  const user = await c.env.DB.prepare('SELECT id, role FROM users WHERE id = ? AND active = 1').bind(row!.user_id).first<{ id: string; role: 'customer' }>();
+  const user = await c.env.empire_accounts.prepare('SELECT id, role FROM users WHERE id = ? AND active = 1').bind(row!.user_id).first<{ id: string; role: 'customer' }>();
   if (!user) fail(401, 'inactive_user');
   return c.json(await issueTokens(c.env, user!));
 });
@@ -64,7 +64,7 @@ app.post('/verify', async (c) => {
 // Rotating refresh tokens: each refresh revokes the old session row.
 app.post('/refresh', async (c) => {
   const token = reqStr(await readJson(c), 'refresh_token', { max: 100 });
-  const row = await c.env.DB.prepare(
+  const row = await c.env.empire_accounts.prepare(
     `UPDATE sessions SET revoked_at = datetime('now')
      WHERE refresh_hash = ? AND revoked_at IS NULL AND expires_at > datetime('now')
      RETURNING user_id`,
@@ -72,21 +72,21 @@ app.post('/refresh', async (c) => {
     .bind(await sha256(token))
     .first<{ user_id: string }>();
   if (!row) fail(401, 'invalid_refresh_token');
-  const user = await c.env.DB.prepare('SELECT id, role FROM users WHERE id = ? AND active = 1').bind(row!.user_id).first<{ id: string; role: 'customer' }>();
+  const user = await c.env.empire_accounts.prepare('SELECT id, role FROM users WHERE id = ? AND active = 1').bind(row!.user_id).first<{ id: string; role: 'customer' }>();
   if (!user) fail(401, 'inactive_user');
   return c.json(await issueTokens(c.env, user!));
 });
 
 app.post('/logout', async (c) => {
   const token = str(await readJson(c), 'refresh_token', { max: 100, optional: true });
-  if (token) await c.env.DB.prepare(`UPDATE sessions SET revoked_at = datetime('now') WHERE refresh_hash = ?`).bind(await sha256(token)).run();
+  if (token) await c.env.empire_accounts.prepare(`UPDATE sessions SET revoked_at = datetime('now') WHERE refresh_hash = ?`).bind(await sha256(token)).run();
   return c.json({ ok: true });
 });
 
 app.post('/password', requireAuth(), async (c) => {
   const password = reqStr(await readJson(c), 'password', { max: 200 });
   if (password.length < 12) fail(400, 'weak_password', 'Use at least 12 characters');
-  await c.env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(await hashPassword(password), c.get('user').id).run();
+  await c.env.empire_accounts.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(await hashPassword(password), c.get('user').id).run();
   return c.json({ ok: true });
 });
 
@@ -112,21 +112,21 @@ app.post('/pin', async (c) => {
   const pin = reqStr(body, 'pin', { pattern: PIN });
   await rateLimit(c, `pin:${deviceId}`);
 
-  const claimed = await c.env.DB.prepare(
+  const claimed = await c.env.empire_accounts.prepare(
     `UPDATE device_pins SET failed_attempts = failed_attempts + 1 WHERE device_id = ? AND failed_attempts < ? RETURNING user_id, pin_hash`,
   )
     .bind(deviceId, PIN_MAX_FAILS)
     .first<{ user_id: string; pin_hash: string }>();
   if (!claimed) {
-    const exists = await c.env.DB.prepare('SELECT 1 FROM device_pins WHERE device_id = ?').bind(deviceId).first();
+    const exists = await c.env.empire_accounts.prepare('SELECT 1 FROM device_pins WHERE device_id = ?').bind(deviceId).first();
     if (!exists) fail(401, 'invalid_pin', 'That PIN did not match.');
     fail(403, 'pin_locked', 'Too many wrong PINs on this device. Sign in with your password or email link to reset it.');
   }
 
-  const user = await c.env.DB.prepare('SELECT id, role, active FROM users WHERE id = ?').bind(claimed!.user_id).first<{ id: string; role: 'customer'; active: number }>();
+  const user = await c.env.empire_accounts.prepare('SELECT id, role, active FROM users WHERE id = ?').bind(claimed!.user_id).first<{ id: string; role: 'customer'; active: number }>();
   if (!user?.active || !(await verifyPassword(pin, claimed!.pin_hash))) fail(401, 'invalid_pin', 'That PIN did not match.');
 
-  await c.env.DB.prepare('UPDATE device_pins SET failed_attempts = 0, updated_at = datetime(\'now\') WHERE device_id = ?').bind(deviceId).run();
+  await c.env.empire_accounts.prepare('UPDATE device_pins SET failed_attempts = 0, updated_at = datetime(\'now\') WHERE device_id = ?').bind(deviceId).run();
   return c.json(await issueTokens(c.env, user!));
 });
 
@@ -134,7 +134,7 @@ app.post('/pin', async (c) => {
 app.get('/pin/status', async (c) => {
   const deviceId = c.req.query('device_id') ?? '';
   if (!DEVICE_ID.test(deviceId)) return c.json({ set: false, locked: false });
-  const row = await c.env.DB.prepare('SELECT failed_attempts FROM device_pins WHERE device_id = ?').bind(deviceId).first<{ failed_attempts: number }>();
+  const row = await c.env.empire_accounts.prepare('SELECT failed_attempts FROM device_pins WHERE device_id = ?').bind(deviceId).first<{ failed_attempts: number }>();
   return c.json({ set: !!row, locked: !!row && row.failed_attempts >= PIN_MAX_FAILS });
 });
 
@@ -145,7 +145,7 @@ export default app;
 export const me = new Hono<AppEnv>();
 
 me.get('/me', requireAuth(), async (c) => {
-  const u = await c.env.DB.prepare('SELECT id, email, role, display_name, phone, locale, crew_id FROM users WHERE id = ?').bind(c.get('user').id).first();
+  const u = await c.env.empire_accounts.prepare('SELECT id, email, role, display_name, phone, locale, crew_id FROM users WHERE id = ?').bind(c.get('user').id).first();
   return c.json(u);
 });
 
@@ -153,7 +153,7 @@ me.patch('/me', requireAuth(), async (c) => {
   const body = await readJson(c);
   const locale = oneOf(body, 'locale', ['en', 'es'] as const, true);
   const name = str(body, 'display_name', { optional: true, max: 100 });
-  await c.env.DB.prepare('UPDATE users SET locale = COALESCE(?, locale), display_name = COALESCE(?, display_name) WHERE id = ?')
+  await c.env.empire_accounts.prepare('UPDATE users SET locale = COALESCE(?, locale), display_name = COALESCE(?, display_name) WHERE id = ?')
     .bind(locale ?? null, name ?? null, c.get('user').id)
     .run();
   return c.json({ ok: true });
@@ -163,7 +163,7 @@ me.post('/devices', requireAuth(), async (c) => {
   const body = await readJson(c);
   const token = reqStr(body, 'apns_token', { max: 200, pattern: /^[0-9a-f]{64,200}$/i });
   const env = oneOf(body, 'env', ['sandbox', 'production'] as const, true) ?? 'production';
-  await c.env.DB.prepare(
+  await c.env.empire_accounts.prepare(
     `INSERT INTO devices (apns_token, user_id, env) VALUES (?, ?, ?)
      ON CONFLICT(apns_token) DO UPDATE SET user_id = excluded.user_id, env = excluded.env, updated_at = datetime('now')`,
   )
@@ -173,7 +173,7 @@ me.post('/devices', requireAuth(), async (c) => {
 });
 
 me.delete('/devices/:token', requireAuth(), async (c) => {
-  await c.env.DB.prepare('DELETE FROM devices WHERE apns_token = ? AND user_id = ?').bind(c.req.param('token'), c.get('user').id).run();
+  await c.env.empire_accounts.prepare('DELETE FROM devices WHERE apns_token = ? AND user_id = ?').bind(c.req.param('token'), c.get('user').id).run();
   return c.json({ ok: true });
 });
 
@@ -186,24 +186,24 @@ me.put('/me/pin', requireAuth(), async (c) => {
   checkPin(pin);
   const userId = c.get('user').id;
 
-  const existing = await c.env.DB.prepare('SELECT user_id FROM device_pins WHERE device_id = ?').bind(deviceId).first<{ user_id: string }>();
+  const existing = await c.env.empire_accounts.prepare('SELECT user_id FROM device_pins WHERE device_id = ?').bind(deviceId).first<{ user_id: string }>();
   if (existing && existing.user_id !== userId) fail(409, 'device_in_use', 'This device is set up for another account.');
 
-  await c.env.DB.batch([
-    c.env.DB.prepare(
+  await c.env.empire_accounts.batch([
+    c.env.empire_accounts.prepare(
       `INSERT INTO device_pins (device_id, user_id, pin_hash, failed_attempts) VALUES (?, ?, ?, 0)
        ON CONFLICT(device_id) DO UPDATE SET pin_hash = excluded.pin_hash, failed_attempts = 0, updated_at = datetime('now')`,
     ).bind(deviceId, userId, await hashPassword(pin)),
-    audit(c.env.DB, userId, 'device_pin.set', 'user', userId, { device: deviceId.slice(-4) }),
+    audit(c.env.empire_accounts, userId, 'device_pin.set', 'user', userId, { device: deviceId.slice(-4) }),
   ]);
   return c.json({ ok: true });
 });
 
 me.delete('/me/pin/:deviceId', requireAuth(), async (c) => {
   const deviceId = c.req.param('deviceId');
-  await c.env.DB.batch([
-    c.env.DB.prepare('DELETE FROM device_pins WHERE device_id = ? AND user_id = ?').bind(deviceId, c.get('user').id),
-    audit(c.env.DB, c.get('user').id, 'device_pin.remove', 'user', c.get('user').id, { device: deviceId.slice(-4) }),
+  await c.env.empire_accounts.batch([
+    c.env.empire_accounts.prepare('DELETE FROM device_pins WHERE device_id = ? AND user_id = ?').bind(deviceId, c.get('user').id),
+    audit(c.env.empire_accounts, c.get('user').id, 'device_pin.remove', 'user', c.get('user').id, { device: deviceId.slice(-4) }),
   ]);
   return c.json({ ok: true });
 });

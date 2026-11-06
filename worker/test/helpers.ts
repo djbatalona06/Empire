@@ -23,7 +23,7 @@ export async function api(path: string, opts: { method?: string; token?: string;
 export async function user(role: string, extra: { crew_id?: string; email?: string } = {}) {
   const id = crypto.randomUUID();
   const email = extra.email ?? `${role}-${id.slice(0, 8)}@example.com`;
-  await env.DB.prepare('INSERT INTO users (id, email, role, display_name, crew_id) VALUES (?, ?, ?, ?, ?)').bind(id, email, role, `${role} ${id.slice(0, 4)}`, extra.crew_id ?? null).run();
+  await env.empire_accounts.prepare('INSERT INTO users (id, email, role, display_name, crew_id) VALUES (?, ?, ?, ?, ?)').bind(id, email, role, `${role} ${id.slice(0, 4)}`, extra.crew_id ?? null).run();
   return { id, email, token: await login(email) };
 }
 
@@ -38,7 +38,7 @@ export async function login(email: string) {
 export async function property(opts: { lat?: number; lng?: number; dnk?: boolean; address?: string } = {}) {
   const id = crypto.randomUUID();
   const address = opts.address ?? `${Math.floor(Math.random() * 9000) + 1000} S 188th St, SeaTac, WA 98188`;
-  await env.DB.prepare('INSERT INTO properties (id, address, address_norm, zip, lat, lng, seatac_valid, do_not_knock) VALUES (?, ?, ?, ?, ?, ?, 1, ?)')
+  await env.empire_accounts.prepare('INSERT INTO properties (id, address, address_norm, zip, lat, lng, seatac_valid, do_not_knock) VALUES (?, ?, ?, ?, ?, ?, 1, ?)')
     .bind(id, address, `${address.toUpperCase()}-${id}`, '98188', opts.lat ?? SEATAC.lat, opts.lng ?? SEATAC.lng, opts.dnk ? 1 : 0)
     .run();
   return id;

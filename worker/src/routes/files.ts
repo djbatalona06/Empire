@@ -55,14 +55,14 @@ app.get('/files/*', async (c) => {
 // ---- Reference data for the apps -----------------------------------------
 
 app.get('/catalog', requireAuth(), async (c) => {
-  const { results } = await c.env.DB.prepare('SELECT id, sku, kind, name, name_es, speed_mbps, monthly_price_cents, promo_price_cents, promo_months, contract_months, eligibility_notes, required_tech, commission_cents FROM catalog_items WHERE active = 1 ORDER BY kind, monthly_price_cents').all();
+  const { results } = await c.env.empire_accounts.prepare('SELECT id, sku, kind, name, name_es, speed_mbps, monthly_price_cents, promo_price_cents, promo_months, contract_months, eligibility_notes, required_tech, commission_cents FROM catalog_items WHERE active = 1 ORDER BY kind, monthly_price_cents').all();
   // Commission estimates are internal: staff only.
   return c.json(STAFF.includes(c.get('user').role) ? results : results.map(({ commission_cents, ...r }) => r));
 });
 
 app.get('/consent-texts', requireAuth(...STAFF), async (c) => {
-  const version = c.req.query('version') ?? (await c.env.DB.prepare(`SELECT value FROM settings WHERE key = 'active_consent_version'`).first<{ value: string }>())?.value ?? 'v1';
-  const { results } = await c.env.DB.prepare('SELECT version, kind, locale, body FROM consent_texts WHERE version = ? AND active = 1').bind(version).all();
+  const version = c.req.query('version') ?? (await c.env.empire_accounts.prepare(`SELECT value FROM settings WHERE key = 'active_consent_version'`).first<{ value: string }>())?.value ?? 'v1';
+  const { results } = await c.env.empire_accounts.prepare('SELECT version, kind, locale, body FROM consent_texts WHERE version = ? AND active = 1').bind(version).all();
   return c.json({ version, texts: results });
 });
 
