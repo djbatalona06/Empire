@@ -24,6 +24,8 @@ Desktop staff click the same link and land in the **admin console** (`/auth/veri
 
 Push notifications deep-link into the right tab (`screen`: timeline / invoice / feedback).
 
+**Account menu** (person icon on **My order**): Sign out, and **Delete my account**. Deleting asks for confirmation, then removes the name, email, phone and photos and signs the customer out. It is refused while an order is still open or an invoice is unpaid ("contact us to finish or cancel them first"). Invoices and consent records are kept as the law requires, without the personal details attached.
+
 ## Coworker: 3 tabs + banner
 
 ```mermaid
@@ -91,7 +93,19 @@ A team lead resolves a conflict row in the Review queue; resolving it does not r
 
 ## Customer cancellation
 
-Today only office or admin can cancel an order (Admin → Orders → Cancel order, reason required), and never after it is activated. Customers cannot cancel from the app yet. A request step inside the 3-business-day window is planned, pending counsel's wording.
+```mermaid
+flowchart LR
+  T[Order status screen] --> E{Order not active<br/>and inside the window?}
+  E -- no --> N[No button. Customer contacts the dealer]
+  E -- yes --> B[Request cancellation] --> R[Optional reason ≤ 300 characters] --> S[Request sent]
+  S --> M[Office and admins get an email]
+  S --> C[Admin → Orders shows a "cancel requested" badge and the reason]
+  C --> D[Office presses Cancel order]
+```
+
+- The window is **3 business days** (Monday to Friday, public holidays are not skipped) counted from the day the order was placed, in Pacific time. Admins can change the number in **Settings → Customer cancellation window**. Counsel confirms the right number (see the launch checklist).
+- A customer can ask **once** per order. The request does not cancel anything by itself; office or admin approves with the normal **Cancel order** action (reason required, never after activation).
+- After the window closes, or once the order is activated, the button is gone and the server refuses the request.
 
 ## Exports and privacy
 

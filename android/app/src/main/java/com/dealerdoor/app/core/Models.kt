@@ -85,6 +85,10 @@ data class CustomerOrder(
     val billingNotice: String,
     val timeline: List<CustomerStage>,
     val feedbackUnlocked: Boolean,
+    // Older servers do not send these.
+    val cancelEligible: Boolean = false,
+    val cancelDeadline: String? = null,
+    val cancelRequestedAt: String? = null,
 )
 
 // ---- Invoices ----

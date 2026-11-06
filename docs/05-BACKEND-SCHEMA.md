@@ -68,6 +68,7 @@ erDiagram
 | `customer_feedback` | adds `photo_key`, `admin_note`, moderation fields, UNIQUE(order) | Spec 4.5: optional photo, internal notes never exposed |
 | `kudos` order only | `order_id` **or** `route_id` | Spec 4.6: "tied to a route or order" |
 | — | auth, devices, routes, check-ins, coverage, payments, reminders, commissions, audit, conflicts | Needed by spec sections 4, 8, 11 |
+| — | `users.deleted_at`; `orders.cancel_requested_at`, `orders.cancel_request_reason`; setting `cancel_window_business_days` (migration `0005`) | Customer account deletion keeps the row but blanks the person; the customer asks to cancel and office decides |
 
 ## Honest limits
 

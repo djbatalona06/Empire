@@ -162,7 +162,8 @@ const views = {
     table('orders', rows, [
       ['Created', (r) => day(r.created_at)], ['Customer', (r) => r.customer_name], ['Address', (r) => r.address], ['Rep', (r) => r.coworker_name],
       ['Bundle', (r) => r.bundle.items.map((i) => i.sku).join(' + ')], ['Install', (r) => day(r.install_scheduled_at)],
-      ['Open invoices', (r) => r.open_invoices || ''], ['Status', (r) => badge(r.status)],
+      ['Open invoices', (r) => r.open_invoices || ''],
+      ['Status', (r) => el('span', {}, badge(r.status), r.cancel_requested_at && !['cancelled', 'closed'].includes(r.status) ? badge('cancel requested', 'warn') : null)],
     ], (r) => openOrder(r.id));
   },
 
@@ -272,6 +273,10 @@ async function openOrder(id) {
   $('#order-title').textContent = `Order ${o.id.slice(0, 8)} · ${o.status}`;
   $('#order-summary').textContent = `${o.address ?? ''} · ${o.bundle.items.map((i) => i.name).join(' + ')} · ${money(o.bundle.monthly_total_cents)}/mo (billed by AT&T) · commission est. ${money(o.commission?.estimate_cents)}`;
   $('#order-edit [name=att_order_ref]').value = o.att_order_ref ?? '';
+  const ask = $('#order-cancel-request');
+  ask.hidden = !o.cancel_requested_at || ['cancelled', 'closed'].includes(o.status);
+  ask.textContent = o.cancel_requested_at ? `The customer asked to cancel on ${day(o.cancel_requested_at)}. Reason: ${o.cancel_request_reason || 'none given'}. Enter a cancel reason below and press Cancel order to approve, or contact the customer.` : '';
+  $('#order-edit [name=cancelled_reason]').value = !ask.hidden ? (o.cancel_request_reason ? `Customer request: ${o.cancel_request_reason}`.slice(0, 300) : 'Customer request') : '';
   const host = $('#order-timeline');
   host.replaceChildren(...o.timeline.map((stage) => {
     const row = $('#stage-row').content.firstElementChild.cloneNode(true);

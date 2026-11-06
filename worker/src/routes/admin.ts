@@ -47,8 +47,9 @@ app.patch('/admin/users/:id', admin, async (c) => {
   const setCrew = 'crew_id' in body;
   const crewId = setCrew ? (body.crew_id === null ? null : str(body, 'crew_id', { max: 64 }) ?? null) : null;
 
-  const target = await c.env.DB.prepare('SELECT role, active FROM users WHERE id = ?').bind(id).first<{ role: Role; active: number }>();
+  const target = await c.env.DB.prepare('SELECT role, active, deleted_at FROM users WHERE id = ?').bind(id).first<{ role: Role; active: number; deleted_at: string | null }>();
   if (!target) fail(404, 'not_found');
+  if (target!.deleted_at) fail(409, 'account_deleted', 'This customer deleted their account, so it cannot be changed or turned back on.');
 
   // Nobody can lock the admins out: not by editing themselves, and not by removing the last active admin.
   const losesAdmin = target!.role === 'admin' && target!.active === 1 && ((role !== null && role !== 'admin') || active === 0);
@@ -276,7 +277,7 @@ app.patch('/admin/conflicts/:id', managers, async (c) => {
 
 // ---- Settings, audit, metrics ----------------------------------------------
 
-const SETTINGS = ['solicitation_permit_ref', 'default_payment_term_days', 'active_consent_version', 'geofence_meters', 'stale_lead_days'];
+const SETTINGS = ['solicitation_permit_ref', 'default_payment_term_days', 'active_consent_version', 'geofence_meters', 'stale_lead_days', 'cancel_window_business_days'];
 
 app.get('/admin/settings', managers, async (c) => c.json(Object.fromEntries((await c.env.DB.prepare('SELECT key, value FROM settings').all<{ key: string; value: string }>()).results.map((r) => [r.key, r.value]))));
 

@@ -5,7 +5,7 @@ import { devLoginAllowed } from '../lib/config';
 import { hashPassword, randomToken, sha256, verifyPassword } from '../lib/crypto';
 import { t } from '../lib/i18n';
 import { sendEmail } from '../lib/notify';
-import { email, fail, oneOf, readJson, reqStr, str } from '../lib/util';
+import { audit, email, fail, oneOf, readJson, reqStr, str } from '../lib/util';
 
 const app = new Hono<AppEnv>();
 
@@ -108,6 +108,58 @@ me.patch('/me', requireAuth(), async (c) => {
   await c.env.DB.prepare('UPDATE users SET locale = COALESCE(?, locale), display_name = COALESCE(?, display_name) WHERE id = ?')
     .bind(locale ?? null, name ?? null, c.get('user').id)
     .run();
+  return c.json({ ok: true });
+});
+
+// A customer deletes their own account. The row stays because invoices and consent records point to it, but every
+// personal detail is blanked. Staff accounts are deactivated by an admin instead.
+me.delete('/me', requireAuth('customer'), async (c) => {
+  const id = c.get('user').id;
+  const db = c.env.DB;
+
+  const open = await db
+    .prepare(
+      `SELECT (SELECT COUNT(*) FROM orders WHERE customer_id = ? AND status NOT IN ('closed','cancelled')) AS open_orders,
+              (SELECT COUNT(*) FROM invoices WHERE customer_id = ? AND status IN ('sent','viewed','partial','overdue')) AS open_invoices`,
+    )
+    .bind(id, id)
+    .first<{ open_orders: number; open_invoices: number }>();
+  if (open && (open.open_orders || open.open_invoices)) {
+    fail(409, 'account_has_open_items', 'You still have an order in progress or an unpaid invoice. Please contact us to finish or cancel them first.', {
+      open_orders: open.open_orders,
+      open_invoices: open.open_invoices,
+    });
+  }
+
+  // Photos to remove from file storage: the customer's feedback photos and the door photos of their sign-up.
+  const linkedLeads = `(l.id IN (SELECT lead_id FROM orders WHERE customer_id = ?) OR lower(l.email) = (SELECT lower(email) FROM users WHERE id = ?))`;
+  const keys = [
+    ...(await db.prepare(`SELECT l.photo_key AS k FROM leads l WHERE l.photo_key IS NOT NULL AND ${linkedLeads}`).bind(id, id).all<{ k: string }>()).results,
+    ...(await db.prepare('SELECT photo_key AS k FROM customer_feedback WHERE customer_id = ? AND photo_key IS NOT NULL').bind(id).all<{ k: string }>()).results,
+  ].map((r) => r.k);
+
+  await db.batch([
+    // Lead rows are kept for the consent evidence (time, wording version, rep, address, signature); only who the person was is removed.
+    db.prepare(`UPDATE leads AS l SET customer_name = NULL, phone = NULL, email = NULL, photo_key = NULL WHERE ${linkedLeads}`).bind(id, id),
+    db.prepare('UPDATE customer_feedback SET comment = NULL, photo_key = NULL WHERE customer_id = ?').bind(id),
+    db.prepare(
+      `UPDATE users SET email = 'deleted-' || id || '@deleted.invalid', display_name = 'Deleted customer', phone = NULL, password_hash = NULL,
+         active = 0, deleted_at = datetime('now') WHERE id = ?`,
+    ).bind(id),
+    db.prepare(`UPDATE sessions SET revoked_at = datetime('now') WHERE user_id = ? AND revoked_at IS NULL`).bind(id),
+    db.prepare('DELETE FROM devices WHERE user_id = ?').bind(id),
+    db.prepare('DELETE FROM magic_links WHERE user_id = ?').bind(id),
+    audit(db, id, 'account.delete', 'user', id),
+  ]);
+
+  // The database is already clean at this point; a storage hiccup only leaves files that the next clean-up can remove.
+  try {
+    const uploaded = await c.env.FILES.list({ prefix: `feedback_photo/${id}/` });
+    const all = [...new Set([...keys, ...uploaded.objects.map((o) => o.key)])];
+    if (all.length) await c.env.FILES.delete(all);
+  } catch (e) {
+    console.error(JSON.stringify({ level: 'error', msg: 'account_delete_files_failed', requestId: c.get('requestId'), detail: String(e) }));
+  }
   return c.json({ ok: true });
 });
 

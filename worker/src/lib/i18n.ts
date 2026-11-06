@@ -15,6 +15,9 @@ const strings = {
     push_feedback_body: 'Your service is active. Rate your experience in the Feedback tab.',
     push_invoice_title: 'New invoice',
     push_invoice_body: (amount: string, due: string) => `${amount} due ${due}.`,
+    cancel_request_subject: 'Order cancellation request',
+    cancel_request_body: (order: string, address: string, reason: string) =>
+      `A customer asked to cancel order ${order}${address ? ` (${address})` : ''}.\n\nReason: ${reason || 'none given'}\n\nOpen the order in the admin console to approve (Cancel order) or contact the customer.`,
     remind_title: 'Payment reminder',
     remind_body: { 'T-3': (a: string, d: string) => `${a} is due in 3 days (${d}).`, T0: (a: string) => `${a} is due today.`, 'T+7': (a: string) => `${a} is 7 days past due.`, 'T+30': (a: string) => `${a} is 30 days past due. Please contact us.` },
   },
@@ -33,6 +36,9 @@ const strings = {
     push_feedback_body: 'Su servicio está activo. Califique su experiencia en la pestaña Opiniones.',
     push_invoice_title: 'Nueva factura',
     push_invoice_body: (amount: string, due: string) => `${amount} vence el ${due}.`,
+    cancel_request_subject: 'Solicitud de cancelación de pedido',
+    cancel_request_body: (order: string, address: string, reason: string) =>
+      `Un cliente pidió cancelar el pedido ${order}${address ? ` (${address})` : ''}.\n\nMotivo: ${reason || 'no indicó'}\n\nAbra el pedido en la consola de administración para aprobarlo (Cancel order) o comuníquese con el cliente.`,
     remind_title: 'Recordatorio de pago',
     remind_body: { 'T-3': (a: string, d: string) => `${a} vence en 3 días (${d}).`, T0: (a: string) => `${a} vence hoy.`, 'T+7': (a: string) => `${a} tiene 7 días de atraso.`, 'T+30': (a: string) => `${a} tiene 30 días de atraso. Comuníquese con nosotros.` },
   },

@@ -9,6 +9,21 @@
 "Sign in" = "Iniciar sesión";
 "Email me a sign-in link" = "Enviarme un enlace de acceso";
 "Privacy policy" = "Política de privacidad";
+
+/* Account deletion and order cancellation */
+"Delete my account" = "Eliminar mi cuenta";
+"Delete your account?" = "¿Eliminar su cuenta?";
+"We will remove your name, email, phone and photos and sign you out. Invoices and consent records are kept as the law requires." = "Eliminaremos su nombre, correo, teléfono y fotos, y cerraremos su sesión. Las facturas y los registros de consentimiento se conservan según lo exige la ley.";
+"Delete" = "Eliminar";
+"Couldn't delete your account" = "No se pudo eliminar su cuenta";
+"Request cancellation" = "Solicitar cancelación";
+"Cancel this order?" = "¿Cancelar este pedido?";
+"Reason (optional)" = "Motivo (opcional)";
+"Send request" = "Enviar solicitud";
+"Keep order" = "Mantener pedido";
+"The office will review your request and contact you." = "La oficina revisará su solicitud y se comunicará con usted.";
+"You asked to cancel. The office will contact you." = "Usted pidió cancelar. La oficina se comunicará con usted.";
+"You can ask to cancel until %@." = "Puede pedir la cancelación hasta el %@.";
 "Check your email and tap the link on this iPhone." = "Revise su correo y toque el enlace en este iPhone.";
 "DealerDoor is locked" = "DealerDoor está bloqueado";
 "Unlock" = "Desbloquear";

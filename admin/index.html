@@ -210,6 +210,7 @@
         <label>Active consent text version <input name="active_consent_version"></label>
         <label>Check-in geofence (meters) <input name="geofence_meters" type="number" min="25" max="500"></label>
         <label>Close stale leads after (days) <input name="stale_lead_days" type="number" min="7" max="180"></label>
+        <label>Customer cancellation window (business days) <input name="cancel_window_business_days" type="number" min="0" max="30"></label>
         <button type="submit">Save settings</button>
       </form>
       <h3>SeaTac service area (GeoJSON Polygon)</h3>
@@ -232,6 +233,7 @@
 <dialog id="order-dialog">
   <form method="dialog" class="dialog-head"><h2 id="order-title">Order</h2><button class="link" aria-label="Close">✕</button></form>
   <div id="order-summary" class="muted"></div>
+  <p id="order-cancel-request" class="card" role="status" hidden></p>
   <form id="order-edit" class="grid">
     <label>AT&amp;T order ref <input name="att_order_ref"></label>
     <label>Cancel reason <input name="cancelled_reason" placeholder="only to cancel"></label>
