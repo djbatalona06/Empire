@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Reviews
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -49,6 +50,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -64,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -131,13 +134,52 @@ fun Screen(title: String, onBack: (() -> Unit)? = null, actions: @Composable () 
     ) { padding -> Box(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) { content() } }
 }
 
-/** Account menu with "Sign out", shared by the customer and coworker home screens. */
+/** Account menu with "Sign out", shared by the customer and coworker home screens. Customers can also delete their account. */
 @Composable
-fun AccountMenu() {
+fun AccountMenu(deletable: Boolean = false) {
     var open by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     IconButton(onClick = { open = true }) { Icon(Icons.Filled.AccountCircle, contentDescription = stringResource(R.string.account)) }
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
         DropdownMenuItem(text = { Text(stringResource(R.string.sign_out), color = MaterialTheme.colorScheme.error) }, onClick = { open = false; Auth.signOut() })
+        if (deletable) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.delete_account), color = MaterialTheme.colorScheme.error) },
+                onClick = { open = false; confirmDelete = true },
+                modifier = Modifier.testTag("account.delete"),
+            )
+        }
+    }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(stringResource(R.string.delete_account_title)) },
+            text = { Text(stringResource(R.string.delete_account_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    scope.launch {
+                        try {
+                            Api.send("DELETE", "me")
+                            Auth.signOut()
+                        } catch (e: Exception) {
+                            deleteError = e.message
+                        }
+                    }
+                }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+    deleteError?.let { message ->
+        AlertDialog(
+            onDismissRequest = { deleteError = null },
+            title = { Text(stringResource(R.string.delete_account_failed)) },
+            text = { Text(message) },
+            confirmButton = { TextButton(onClick = { deleteError = null }) { Text(stringResource(R.string.ok)) } },
+        )
     }
 }
 
@@ -156,7 +198,7 @@ fun OrdersTab() {
     var openOrder by rememberSaveable { mutableStateOf<String?>(null) }
     openOrder?.let { id -> return OrderTimelineScreen(id) { openOrder = null } }
 
-    Screen(stringResource(R.string.my_order), actions = { AccountMenu() }) {
+    Screen(stringResource(R.string.my_order), actions = { AccountMenu(deletable = true) }) {
         AsyncContent(load = { Api.get<List<OrderSummary>>("orders") }) { orders, reload ->
             Refreshable(orders, reload) {
                 LazyColumn(Modifier.fillMaxSize()) {
@@ -206,9 +248,60 @@ fun OrderTimelineScreen(orderId: String, onBack: () -> Unit) {
                         LabeledRow(item.name, stringResource(R.string.per_month, Fmt.money(item.promoPriceCents ?: item.monthlyPriceCents)))
                     }
                     item { BillingNotice(order.billingNotice) }
+                    item { CancelSection(order, reload) }
                 }
             }
         }
+    }
+}
+
+/** Lets the customer ask to cancel while the cooling-off window is open. Office reviews the request. */
+@Composable
+fun CancelSection(order: CustomerOrder, reload: suspend () -> Unit) {
+    var asking by remember { mutableStateOf(false) }
+    var reason by remember { mutableStateOf("") }
+    var errorText by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    when {
+        order.cancelRequestedAt != null ->
+            Text(stringResource(R.string.cancel_requested), modifier = Modifier.padding(16.dp).testTag("order.cancelRequested"))
+        order.cancelEligible ->
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedButton(onClick = { asking = true }, modifier = Modifier.fillMaxWidth().testTag("order.cancel")) {
+                    Text(stringResource(R.string.request_cancellation), color = MaterialTheme.colorScheme.error)
+                }
+                order.cancelDeadline?.let {
+                    Text(stringResource(R.string.cancel_until, Fmt.day(it)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                errorText?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+            }
+    }
+    if (asking) {
+        AlertDialog(
+            onDismissRequest = { asking = false },
+            title = { Text(stringResource(R.string.cancel_order_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.cancel_review))
+                    OutlinedTextField(value = reason, onValueChange = { reason = it.take(300) }, label = { Text(stringResource(R.string.cancel_reason_hint)) }, modifier = Modifier.fillMaxWidth())
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    asking = false
+                    errorText = null
+                    scope.launch {
+                        try {
+                            Api.send("POST", "orders/${order.id}/cancel-request", if (reason.isBlank()) emptyMap() else mapOf("reason" to reason.trim()))
+                            reload()
+                        } catch (e: Exception) {
+                            errorText = e.message
+                        }
+                    }
+                }) { Text(stringResource(R.string.send_request), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { asking = false }) { Text(stringResource(R.string.keep_order)) } },
+        )
     }
 }
 

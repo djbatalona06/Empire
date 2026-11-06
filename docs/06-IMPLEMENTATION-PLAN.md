@@ -77,8 +77,8 @@ The full checklist, with sizes and who does each item, is in [09-REMAINING-WORK.
 
 - ✅🧪 Privacy policy page at `/privacy` (draft text; 🙋 counsel approves and fills the brackets)
 - ✅🧪 CSV export of leads, orders, invoices and commissions (Admin console, office and admin)
-- ⏳ Account deletion and customer cancellation request
-- ⏳ Two-step sign-in for office and admin
+- ✅🧪 Customer **Delete my account** and **Request cancellation** (both phone apps, API, admin console)
+- ➡️ Two-step sign-in: handled by open draft PR #4, not duplicated here
 - ⏳ Android push (needs a Firebase project) and notification links
 
 ## Deploy commands

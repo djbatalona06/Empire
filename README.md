@@ -96,10 +96,10 @@ Each UI-test job saves a screenshot of every screen and pushes them to the [`ci-
 
 | Area | Endpoints |
 |---|---|
-| Auth | `POST auth/login` (magic link or password) · `auth/verify` · `auth/refresh` · `auth/logout` · `auth/password` · `GET/PATCH me` · `POST devices` |
+| Auth | `POST auth/login` (magic link or password) · `auth/verify` · `auth/refresh` · `auth/logout` · `auth/password` · `GET/PATCH me` · `DELETE me` (customer deletes own account) · `POST devices` |
 | Field | `GET routes/mine` · `service-area` · `dnk/map` · `POST properties/validate` · `POST check-ins` |
 | Leads | `GET/POST leads` · `GET/PATCH leads/:id` · `POST leads/:id/serviceability` · `POST appointments` · `PATCH appointments/:id` |
-| Orders | `GET/POST orders` · `GET/PATCH orders/:id` · `GET orders/:id/timeline` · `PATCH timeline/:id` |
+| Orders | `GET/POST orders` · `GET/PATCH orders/:id` · `POST orders/:id/cancel-request` (customer) · `GET orders/:id/timeline` · `PATCH timeline/:id` |
 | Money | `GET/POST invoices` · `GET/PATCH invoices/:id` · `POST invoices/:id/send` · `POST invoices/:id/pay` · `POST webhooks/stripe` |
 | Feedback | `POST feedback/customer` · `GET feedback/customer/mine` · `GET feedback/summary` · `GET feedback/customer` · `PATCH feedback/customer/:id/status` |
 | People | `GET pulse/status` · `POST pulse` · `POST kudos` · `GET coworkers` · `GET scorecards/me` · `GET scorecards/crew` · `GET admin/scorecards` |

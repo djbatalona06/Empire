@@ -31,6 +31,8 @@ struct CustomerHomeView: View {
 
 struct CustomerDashboardView: View {
     @Environment(AuthStore.self) private var auth
+    @State private var confirmDelete = false
+    @State private var deleteError: String?
 
     var body: some View {
         AsyncContent(load: { try await APIClient.shared.get("orders") as [OrderSummary] }) { orders, reload in
@@ -48,8 +50,28 @@ struct CustomerDashboardView: View {
         .toolbar {
             Menu {
                 Button("Sign out", role: .destructive) { Task { await auth.signOut() } }
+                Button("Delete my account", role: .destructive) { confirmDelete = true }
             } label: { Image(systemName: "person.crop.circle") }
             .accessibilityLabel(Text("Account"))
+        }
+        .alert("Delete your account?", isPresented: $confirmDelete) {
+            Button("Delete", role: .destructive) { Task { await deleteAccount() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("We will remove your name, email, phone and photos and sign you out. Invoices and consent records are kept as the law requires.")
+        }
+        .alert("Couldn't delete your account", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
+        } message: {
+            Text(deleteError ?? "")
+        }
+    }
+
+    private func deleteAccount() async {
+        do {
+            try await APIClient.shared.send("DELETE", "me")
+            await auth.signOut()
+        } catch {
+            deleteError = error.localizedDescription
         }
     }
 }
@@ -98,10 +120,56 @@ struct OrderTimelineView: View {
                     }
                     BillingNotice(text: order.billingNotice)
                 }
+                CancelSection(order: order, reload: reload)
             }
             .refreshable { await reload() }
         }
         .navigationTitle("Order status")
+    }
+}
+
+/// Lets the customer ask to cancel while the cooling-off window is open. Office reviews the request.
+struct CancelSection: View {
+    let order: CustomerOrder
+    let reload: () async -> Void
+    @State private var asking = false
+    @State private var reason = ""
+    @State private var errorText: String?
+
+    var body: some View {
+        if order.cancelRequestedAt != nil {
+            Section {
+                Label("You asked to cancel. The office will contact you.", systemImage: "clock")
+                    .accessibilityIdentifier("order.cancelRequested")
+            }
+        } else if order.cancelEligible == true {
+            Section {
+                Button("Request cancellation", role: .destructive) { asking = true }
+                    .accessibilityIdentifier("order.cancel")
+                if let until = order.cancelDeadline {
+                    Text("You can ask to cancel until \(Fmt.day(until)).").font(.footnote).foregroundStyle(.secondary)
+                }
+                if let errorText { Text(errorText).font(.footnote).foregroundStyle(.red) }
+            }
+            .alert("Cancel this order?", isPresented: $asking) {
+                TextField("Reason (optional)", text: $reason)
+                Button("Send request", role: .destructive) { Task { await send() } }
+                Button("Keep order", role: .cancel) {}
+            } message: {
+                Text("The office will review your request and contact you.")
+            }
+        }
+    }
+
+    private func send() async {
+        errorText = nil
+        let note = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            try await APIClient.shared.send("POST", "orders/\(order.id)/cancel-request", note.isEmpty ? [:] : ["reason": note])
+            await reload()
+        } catch {
+            errorText = error.localizedDescription
+        }
     }
 }
 

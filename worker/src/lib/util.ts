@@ -84,6 +84,23 @@ export function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Adds business days (Monday to Friday) to a YYYY-MM-DD date. Public holidays are not skipped. */
+export function addBusinessDays(date: string, days: number): string {
+  let d = date;
+  for (let left = Math.max(0, Math.floor(days)); left > 0; ) {
+    d = addDays(d, 1);
+    const weekday = new Date(`${d}T00:00:00Z`).getUTCDay();
+    if (weekday !== 0 && weekday !== 6) left--;
+  }
+  return d;
+}
+
+/** Pacific calendar date (YYYY-MM-DD) of a database timestamp such as "2026-11-06 03:41:54" (stored in UTC). */
+export function pacificDateOf(stamp: string): string {
+  const iso = stamp.includes('T') ? stamp : `${stamp.replace(' ', 'T')}Z`;
+  return todayPacific(new Date(iso));
+}
+
 export const daysBetween = (from: string, to: string) =>
   Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 

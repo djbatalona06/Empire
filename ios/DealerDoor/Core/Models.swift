@@ -76,6 +76,10 @@ struct CustomerOrder: Decodable {
     let billingNotice: String
     let timeline: [CustomerStage]
     let feedbackUnlocked: Bool
+    // Older servers do not send these, so they stay optional.
+    let cancelEligible: Bool?
+    let cancelDeadline: String?
+    let cancelRequestedAt: String?
 }
 
 // MARK: Invoices

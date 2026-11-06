@@ -3,7 +3,7 @@ import { BACKOFFICE, STAFF, type AppEnv, type AuthUser } from '../env';
 import { requireAuth } from '../lib/auth';
 import { t } from '../lib/i18n';
 import { pushToUser, sendEmail } from '../lib/notify';
-import { audit, clientId, fail, isoDateTime, newId, oneOf, readJson, reqStr, str } from '../lib/util';
+import { addBusinessDays, audit, clientId, fail, isoDateTime, newId, oneOf, pacificDateOf, readJson, reqStr, str, todayPacific } from '../lib/util';
 
 const app = new Hono<AppEnv>();
 
@@ -32,13 +32,24 @@ function orderScope(u: AuthUser): [string, unknown[]] {
   }
 }
 
+// A customer may ask to cancel while the order is not active yet and the cooling-off window is still open.
+const CANCELLABLE = ['submitted', 'scheduled', 'installed'];
+
+async function cancelWindow(db: D1Database, order: { status: string; created_at: string; cancel_requested_at: string | null }) {
+  const raw = Number((await db.prepare(`SELECT value FROM settings WHERE key = 'cancel_window_business_days'`).first<{ value: string }>())?.value ?? 3);
+  const days = Number.isFinite(raw) && raw >= 0 ? raw : 3;
+  const deadline = addBusinessDays(pacificDateOf(order.created_at), days);
+  const open = todayPacific() <= deadline;
+  return { days, deadline, open, eligible: open && CANCELLABLE.includes(order.status) && !order.cancel_requested_at };
+}
+
 async function loadOrder(db: D1Database, u: AuthUser, id: string) {
   const [scope, args] = orderScope(u);
   return (
     (await db
       .prepare(`SELECT o.*, p.address FROM orders o LEFT JOIN leads l ON l.id = o.lead_id LEFT JOIN properties p ON p.id = l.property_id WHERE o.id = ? AND ${scope}`)
       .bind(id, ...args)
-      .first<Record<string, unknown> & { id: string; customer_id: string; status: string; bundle_json: string }>()) ?? fail(404, 'order_not_found')
+      .first<Record<string, unknown> & { id: string; customer_id: string; status: string; bundle_json: string; created_at: string; cancel_requested_at: string | null }>()) ?? fail(404, 'order_not_found')
   );
 }
 
@@ -135,7 +146,7 @@ app.get('/orders', requireAuth(), async (c) => {
   const [scope, args] = orderScope(c.get('user'));
   const status = c.req.query('status');
   const { results } = await c.env.DB.prepare(
-    `SELECT o.id, o.status, o.install_scheduled_at, o.activated_at, o.created_at, o.bundle_json, p.address, cu.display_name AS customer_name, cw.display_name AS coworker_name,
+    `SELECT o.id, o.status, o.install_scheduled_at, o.activated_at, o.created_at, o.cancel_requested_at, o.bundle_json, p.address, cu.display_name AS customer_name, cw.display_name AS coworker_name,
        (SELECT COUNT(*) FROM invoices WHERE order_id = o.id AND status NOT IN ('paid','draft')) AS open_invoices
      FROM orders o LEFT JOIN leads l ON l.id = o.lead_id LEFT JOIN properties p ON p.id = l.property_id
      LEFT JOIN users cu ON cu.id = o.customer_id LEFT JOIN users cw ON cw.id = o.coworker_id
@@ -154,7 +165,8 @@ app.get('/orders/:id', requireAuth(), async (c) => {
   const base = { ...rest, bundle: JSON.parse(bundle_json), billing_notice: t(u.locale).att_billing_notice };
   if (u.role === 'customer') {
     const { coworker_id, lead_id, att_order_ref, ...pub } = base as Record<string, unknown>;
-    return c.json({ ...pub, timeline: customerTimeline(rows, order, u.locale), feedback_unlocked: !!order.activated_at });
+    const w = await cancelWindow(c.env.DB, order);
+    return c.json({ ...pub, timeline: customerTimeline(rows, order, u.locale), feedback_unlocked: !!order.activated_at, cancel_eligible: w.eligible, cancel_deadline: w.deadline });
   }
   const commission = await c.env.DB.prepare('SELECT estimate_cents, actual_cents, status FROM commissions WHERE order_id = ?').bind(order.id).first();
   return c.json({ ...base, timeline: rows, commission });
@@ -165,6 +177,39 @@ app.get('/orders/:id/timeline', requireAuth(), async (c) => {
   const order = await loadOrder(c.env.DB, u, c.req.param('id'));
   const rows = await timeline(c.env.DB, order.id);
   return c.json(u.role === 'customer' ? customerTimeline(rows, order, u.locale) : rows);
+});
+
+// The customer asks; office or admin decides with the normal cancel action (PATCH /orders/:id).
+app.post('/orders/:id/cancel-request', requireAuth('customer'), async (c) => {
+  const u = c.get('user');
+  const order = await loadOrder(c.env.DB, u, c.req.param('id'));
+  const reason = str(await readJson(c), 'reason', { optional: true, max: 300 });
+  if (order.cancel_requested_at) fail(409, 'already_requested', 'You already asked to cancel this order. We will contact you.');
+  if (!CANCELLABLE.includes(order.status)) fail(409, 'cannot_cancel_active_order', 'This order is already active or finished. Please contact us.');
+  const w = await cancelWindow(c.env.DB, order);
+  if (!w.open) fail(409, 'cancel_window_closed', `The ${w.days}-business-day cancellation window ended on ${w.deadline}. Please contact us.`);
+
+  const [res] = await c.env.DB.batch([
+    c.env.DB.prepare(
+      `UPDATE orders SET cancel_requested_at = datetime('now'), cancel_request_reason = ?, updated_at = datetime('now')
+       WHERE id = ? AND cancel_requested_at IS NULL AND status IN ('submitted','scheduled','installed')`,
+    ).bind(reason ?? null, order.id),
+    audit(c.env.DB, u.id, 'order.cancel_request', 'order', order.id, { has_reason: !!reason }),
+  ]);
+  if (!res.meta.changes) fail(409, 'already_requested', 'You already asked to cancel this order. We will contact you.');
+
+  c.executionCtx.waitUntil(
+    (async () => {
+      const { results } = await c.env.DB.prepare(`SELECT email, locale FROM users WHERE role IN ('office','admin') AND active = 1`).all<{ email: string; locale: string }>();
+      await Promise.all(
+        results.map((o) => {
+          const s = t(o.locale);
+          return sendEmail(c.env, o.email, s.cancel_request_subject, s.cancel_request_body(order.id.slice(0, 8), String(order.address ?? ''), reason ?? ''));
+        }),
+      );
+    })(),
+  );
+  return c.json({ ok: true });
 });
 
 app.patch('/orders/:id', requireAuth(...BACKOFFICE), async (c) => {

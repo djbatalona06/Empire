@@ -9,20 +9,20 @@ Who does it: 🛠 code (can be built in this repo) · 🙋 needs a person (accou
 | # | Item | Size | Notes |
 |---|---|---|---|
 | A1 | ✅ **Privacy policy page** at `/privacy` (draft text), linked from the admin console and from both phone apps' sign-in screens | S | Both app stores require a URL. Text must be approved by counsel (see C-Legal). |
-| A2 | 🛠 **Account deletion**: endpoint that erases or anonymizes a customer's personal data, plus a "Delete my account" screen on iPhone and Android | M | 🔎 First confirm whether Apple/Google rules apply, since accounts are created by admins. Keep invoices and consent records that the law requires. |
-| A3 | 🛠 **Customer cancellation** (3-business-day window): customer-facing request screen, API route, and a review step in the admin Orders dialog | M | Today only office/admin can cancel, and never after activation. Wording needs counsel (C-Legal). |
+| A2 | ✅ **Account deletion**: endpoint that erases or anonymizes a customer's personal data, plus a "Delete my account" screen on iPhone and Android | M | 🔎 First confirm whether Apple/Google rules apply, since accounts are created by admins. Keep invoices and consent records that the law requires. |
+| A3 | ✅ **Customer cancellation** (3-business-day window): customer-facing request screen, API route, and a review step in the admin Orders dialog | M | Today only office/admin can cancel, and never after activation. Wording needs counsel (C-Legal). |
 | A4 | 🛠 **Android push**: register Android devices, send through FCM from the Worker, show notifications | L | Needs a Firebase project first (C-Accounts). |
 | A5 | 🛠 **Android notification links**: tapped notification opens Order timeline / Invoice / Feedback tab, like iPhone | S | Depends on A4. |
-| A6 | 🛠 **Admin two-step sign-in** (extra code for admin and office roles) | M | The console can see consent records, payments and personal data. |
+| A6 | ➡️ **Admin two-step sign-in**. Covered by open draft PR #4 (owner password step after the emailed link). Not built here to avoid two competing designs | M | The console can see consent records, payments and personal data. Check that PR #4's design also covers office accounts if that matters to you. |
 | A7 | ✅ **CSV export** for leads, orders, invoices (office, admin) and commissions (admin) in the admin console | S | Payroll reconciliation and bookkeeping. Team leads are not offered leads/orders because their normal view is limited to their own crew. |
 
 ## B. Docs to fix
 
 - [x] B1 `06-IMPLEMENTATION-PLAN.md`: Phase 0 and Phase 9 added.
-- [x] B2 `03-APP-FLOW.md`: rule-stop table, Android push status, cancellation status, exports and privacy added. (Update again when A3 ships.)
+- [x] B2 `03-APP-FLOW.md`: rule-stop table, Android push status, cancellation status, exports and privacy added. Cancellation flow added with A3.
 - [x] B3 `07-LAUNCH-CHECKLIST.md`: privacy policy URL and draft, account-deletion decision, Firebase note added.
 - [x] B4 `README.md`: docs table (09 and 10), export route, `/privacy` and health added.
-- [ ] B5 `04-UI-UX-BRIEF.md` (export button and privacy page done) and `05-BACKEND-SCHEMA.md`: add the screens and tables that A2, A3 and A6 introduce when they ship.
+- [x] B5 `04-UI-UX-BRIEF.md` and `05-BACKEND-SCHEMA.md`: screens and columns for exports, privacy, account deletion and cancellation added. (Add Android push later with A4/A5.)
 
 ## C. Needs a person
 
