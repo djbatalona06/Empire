@@ -98,7 +98,7 @@ jobs:
         run: |
           npx wrangler secret list --env "$TARGET" | grep -q '"JWT_SECRET"' || { echo "::error::JWT_SECRET is not set for $TARGET. Run: npx wrangler secret put JWT_SECRET --env $TARGET"; exit 1; }
       - name: Print the database restore point (D1 Time Travel keeps 30 days of history)
-        run: npx wrangler d1 time-travel info DB --env "$TARGET"
+        run: npx wrangler d1 time-travel info empire_accounts --env "$TARGET"
       - run: npx wrangler d1 migrations apply empire_accounts --remote --env "$TARGET"
       - run: npx wrangler deploy --env "$TARGET"
       - name: Smoke test the deployed API
