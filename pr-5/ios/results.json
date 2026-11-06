@@ -1,8 +1,8 @@
 [
   {
     "test": "testCoworkerTour()",
-    "result": "Failed",
-    "failure": "SmokeTests.swift:29: XCTAssertTrue failed"
+    "result": "Passed",
+    "failure": ""
   },
   {
     "test": "testCustomerTour()",

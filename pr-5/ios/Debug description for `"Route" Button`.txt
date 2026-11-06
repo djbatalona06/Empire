@@ -1,5 +1,0 @@
-Query chain:
- →Find: Target Application 'com.dealerdoor.app'
-  ↪︎Find: Descendants matching type TabBar
-    ↪︎Find: Descendants matching type Button
-      ↪︎Find: Elements matching predicate '"Route" IN identifiers'
