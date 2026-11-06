@@ -24,9 +24,9 @@ APNS_ENV = "sandbox"
 EMAIL_FROM = "DealerDoor <no-reply@example.com>"
 
 [[d1_databases]]
-binding = "DB"
-database_name = "dealerdoor-dev"
-database_id = "00000000-0000-0000-0000-000000000000"
+binding = "empire_accounts"
+database_name = "empire_accounts"
+database_id =  "c3016f72-b8c9-447c-b87d-003f8cc11e93"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
@@ -58,7 +58,7 @@ ratelimits = [{ name = "AUTH_LIMITER", namespace_id = "1002", simple = { limit =
 name = "dealerdoor-api"
 vars = { ENVIRONMENT = "production", PUBLIC_BASE_URL = "https://api.example.com", APNS_TOPIC = "com.dealerdoor.app", APNS_ENV = "production", EMAIL_FROM = "DealerDoor <no-reply@example.com>" }
 triggers = { crons = ["0 16 * * *"] }
-d1_databases = [{ binding = "DB", database_name = "dealerdoor-prod", database_id = "REPLACE_WITH_PROD_D1_ID", migrations_dir = "migrations" }]
+d1_databases = [{ binding = "empire_accounts", database_name = "empire_accounts", database_id = "c3016f72-b8c9-447c-b87d-003f8cc11e93", migrations_dir = "migrations" }]
 r2_buckets = [{ binding = "FILES", bucket_name = "dealerdoor-files-prod", jurisdiction = "us" }]
 ratelimits = [{ name = "AUTH_LIMITER", namespace_id = "1003", simple = { limit = 10, period = 60 } }, { name = "API_LIMITER", namespace_id = "2003", simple = { limit = 300, period = 60 } }]
 
