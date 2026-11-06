@@ -1,0 +1,17 @@
+[
+  {
+    "test": "testCoworkerTour()",
+    "result": "Passed",
+    "failure": ""
+  },
+  {
+    "test": "testCustomerTour()",
+    "result": "Passed",
+    "failure": ""
+  },
+  {
+    "test": "testLoginNeedsAnEmail()",
+    "result": "Passed",
+    "failure": ""
+  }
+]
