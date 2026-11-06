@@ -1,0 +1,294 @@
+{
+  "config": {
+    "argv": [
+      "/opt/hostedtoolcache/node/22.23.4/x64/bin/node",
+      "/home/runner/work/Empire/Empire/e2e/node_modules/.bin/playwright",
+      "test"
+    ],
+    "configFile": "/home/runner/work/Empire/Empire/e2e/playwright.config.ts",
+    "rootDir": "/home/runner/work/Empire/Empire/e2e/tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "ci": {
+        "commitHref": "https://github.com/djbatalona06/Empire/commit/b0b6f59f4db51a19f7ac60d52a40777eed6ef849",
+        "commitHash": "b0b6f59f4db51a19f7ac60d52a40777eed6ef849",
+        "prHref": "https://github.com/djbatalona06/Empire/pull/5",
+        "prTitle": "Add a script that makes an admin account",
+        "prBaseHash": "dbdf5933c0a0870c9c933879c8b0dc94a42908d2",
+        "buildHref": "https://github.com/djbatalona06/Empire/actions/runs/42157864997"
+      },
+      "gitCommit": {
+        "shortHash": "b0b6f59",
+        "hash": "b0b6f59f4db51a19f7ac60d52a40777eed6ef849",
+        "subject": "Merge bb38f0664f524d24129c48da8ea60d05503bddd4 into dbdf5933c0a0870c9c933879c8b0dc94a42908d2",
+        "body": "Merge bb38f0664f524d24129c48da8ea60d05503bddd4 into dbdf5933c0a0870c9c933879c8b0dc94a42908d2\n",
+        "author": {
+          "name": "DJ BATALONA",
+          "email": "batalona06@gmail.com",
+          "time": 1793936365000
+        },
+        "committer": {
+          "name": "GitHub",
+          "email": "noreply@github.com",
+          "time": 1793936365000
+        },
+        "branch": "HEAD"
+      },
+      "gitDiff": "diff --git a/worker/scripts/create-admin.mjs b/worker/scripts/create-admin.mjs\nnew file mode 100644\nindex 0000000..a7420c1\n--- /dev/null\n+++ b/worker/scripts/create-admin.mjs\n@@ -0,0 +1,66 @@\n+#!/usr/bin/env node\n+// Creates an admin account, or promotes an existing account to admin and sets its password.\n+//\n+// The password is read from the ADMIN_PASSWORD environment variable. It is never printed and never\n+// written into the repo. The SQL goes to the --out file, which you delete after running it.\n+//\n+//   cd worker\n+//   ADMIN_PASSWORD='...' node scripts/create-admin.mjs \\\n+//     --email you@example.com --name \"Your Name\" --out \"$HOME/admin-bootstrap.sql\"\n+//   npx wrangler d1 execute DB --remote --env production --file \"$HOME/admin-bootstrap.sql\"\n+//   rm \"$HOME/admin-bootstrap.sql\"\n+//\n+// For local testing, drop --remote/--env and add --local instead.\n+\n+import { randomBytes, webcrypto } from 'node:crypto';\n+import { writeFileSync } from 'node:fs';\n+import { parseArgs } from 'node:util';\n+\n+const { subtle } = webcrypto;\n+const ITER = 100_000; // Must match worker/src/lib/crypto.ts, or login will reject the hash.\n+const enc = new TextEncoder();\n+const hex = (buf) => Buffer.from(buf).toString('hex');\n+\n+async function pbkdf2(password, salt) {\n+  const key = await subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);\n+  return hex(await subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: ITER }, key, 256));\n+}\n+\n+async function hashPassword(password) {\n+  const salt = randomBytes(16);\n+  return `pbkdf2$${ITER}$${hex(salt)}$${await pbkdf2(password, salt)}`;\n+}\n+\n+const { values } = parseArgs({\n+  options: {\n+    email: { type: 'string' },\n+    name: { type: 'string', default: 'Owner' },\n+    out: { type: 'string' },\n+  },\n+});\n+\n+const email = values.email?.trim().toLowerCase();\n+const name = values.name.trim();\n+const password = process.env.ADMIN_PASSWORD;\n+\n+if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error('Pass a valid --email');\n+if (!name || name.length > 100) throw new Error('--name must be 1-100 characters');\n+if (!values.out) throw new Error('Pass --out <file.sql> (outside the repo)');\n+if (!password) throw new Error('Set ADMIN_PASSWORD in the environment for this command');\n+if (password.length > 200) throw new Error('Password is over the 200-character limit the API enforces');\n+if (password.length < 12) {\n+  console.warn(`Warning: the password is ${password.length} characters. The app's own password-change rule needs 12+.`);\n+}\n+\n+const q = (s) => `'${s.replace(/'/g, \"''\")}'`;\n+const id = hex(randomBytes(16));\n+const hash = await hashPassword(password);\n+\n+// If the email already exists, keep its id and history: promote it, reactivate it, and replace the password.\n+const sql = `INSERT INTO users (id, email, role, display_name, locale, password_hash, active)\n+VALUES (${q(id)}, ${q(email)}, 'admin', ${q(name)}, 'en', ${q(hash)}, 1)\n+ON CONFLICT(email) DO UPDATE SET role = 'admin', active = 1, password_hash = excluded.password_hash;\n+`;\n+\n+writeFileSync(values.out, sql, { mode: 0o600 });\n+console.log(`Wrote ${values.out} for ${email} (role: admin). The password and hash were not printed.`);",
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/runner/work/Empire/Empire/e2e/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "ci": {
+            "commitHref": "https://github.com/djbatalona06/Empire/commit/b0b6f59f4db51a19f7ac60d52a40777eed6ef849",
+            "commitHash": "b0b6f59f4db51a19f7ac60d52a40777eed6ef849",
+            "prHref": "https://github.com/djbatalona06/Empire/pull/5",
+            "prTitle": "Add a script that makes an admin account",
+            "prBaseHash": "dbdf5933c0a0870c9c933879c8b0dc94a42908d2",
+            "buildHref": "https://github.com/djbatalona06/Empire/actions/runs/42157864997"
+          },
+          "gitCommit": {
+            "shortHash": "b0b6f59",
+            "hash": "b0b6f59f4db51a19f7ac60d52a40777eed6ef849",
+            "subject": "Merge bb38f0664f524d24129c48da8ea60d05503bddd4 into dbdf5933c0a0870c9c933879c8b0dc94a42908d2",
+            "body": "Merge bb38f0664f524d24129c48da8ea60d05503bddd4 into dbdf5933c0a0870c9c933879c8b0dc94a42908d2\n",
+            "author": {
+              "name": "DJ BATALONA",
+              "email": "batalona06@gmail.com",
+              "time": 1793936365000
+            },
+            "committer": {
+              "name": "GitHub",
+              "email": "noreply@github.com",
+              "time": 1793936365000
+            },
+            "branch": "HEAD"
+          },
+          "gitDiff": "diff --git a/worker/scripts/create-admin.mjs b/worker/scripts/create-admin.mjs\nnew file mode 100644\nindex 0000000..a7420c1\n--- /dev/null\n+++ b/worker/scripts/create-admin.mjs\n@@ -0,0 +1,66 @@\n+#!/usr/bin/env node\n+// Creates an admin account, or promotes an existing account to admin and sets its password.\n+//\n+// The password is read from the ADMIN_PASSWORD environment variable. It is never printed and never\n+// written into the repo. The SQL goes to the --out file, which you delete after running it.\n+//\n+//   cd worker\n+//   ADMIN_PASSWORD='...' node scripts/create-admin.mjs \\\n+//     --email you@example.com --name \"Your Name\" --out \"$HOME/admin-bootstrap.sql\"\n+//   npx wrangler d1 execute DB --remote --env production --file \"$HOME/admin-bootstrap.sql\"\n+//   rm \"$HOME/admin-bootstrap.sql\"\n+//\n+// For local testing, drop --remote/--env and add --local instead.\n+\n+import { randomBytes, webcrypto } from 'node:crypto';\n+import { writeFileSync } from 'node:fs';\n+import { parseArgs } from 'node:util';\n+\n+const { subtle } = webcrypto;\n+const ITER = 100_000; // Must match worker/src/lib/crypto.ts, or login will reject the hash.\n+const enc = new TextEncoder();\n+const hex = (buf) => Buffer.from(buf).toString('hex');\n+\n+async function pbkdf2(password, salt) {\n+  const key = await subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);\n+  return hex(await subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: ITER }, key, 256));\n+}\n+\n+async function hashPassword(password) {\n+  const salt = randomBytes(16);\n+  return `pbkdf2$${ITER}$${hex(salt)}$${await pbkdf2(password, salt)}`;\n+}\n+\n+const { values } = parseArgs({\n+  options: {\n+    email: { type: 'string' },\n+    name: { type: 'string', default: 'Owner' },\n+    out: { type: 'string' },\n+  },\n+});\n+\n+const email = values.email?.trim().toLowerCase();\n+const name = values.name.trim();\n+const password = process.env.ADMIN_PASSWORD;\n+\n+if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error('Pass a valid --email');\n+if (!name || name.length > 100) throw new Error('--name must be 1-100 characters');\n+if (!values.out) throw new Error('Pass --out <file.sql> (outside the repo)');\n+if (!password) throw new Error('Set ADMIN_PASSWORD in the environment for this command');\n+if (password.length > 200) throw new Error('Password is over the 200-character limit the API enforces');\n+if (password.length < 12) {\n+  console.warn(`Warning: the password is ${password.length} characters. The app's own password-change rule needs 12+.`);\n+}\n+\n+const q = (s) => `'${s.replace(/'/g, \"''\")}'`;\n+const id = hex(randomBytes(16));\n+const hash = await hashPassword(password);\n+\n+// If the email already exists, keep its id and history: promote it, reactivate it, and replace the password.\n+const sql = `INSERT INTO users (id, email, role, display_name, locale, password_hash, active)\n+VALUES (${q(id)}, ${q(email)}, 'admin', ${q(name)}, 'en', ${q(hash)}, 1)\n+ON CONFLICT(email) DO UPDATE SET role = 'admin', active = 1, password_hash = excluded.password_hash;\n+`;\n+\n+writeFileSync(values.out, sql, { mode: 0o600 });\n+console.log(`Wrote ${values.out} for ${email} (role: admin). The password and hash were not printed.`);",
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/home/runner/work/Empire/Empire/e2e/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/runner/work/Empire/Empire/e2e/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "ci": {
+            "commitHref": "https://github.com/djbatalona06/Empire/commit/b0b6f59f4db51a19f7ac60d52a40777eed6ef849",
+            "commitHash": "b0b6f59f4db51a19f7ac60d52a40777eed6ef849",
+            "prHref": "https://github.com/djbatalona06/Empire/pull/5",
+            "prTitle": "Add a script that makes an admin account",
+            "prBaseHash": "dbdf5933c0a0870c9c933879c8b0dc94a42908d2",
+            "buildHref": "https://github.com/djbatalona06/Empire/actions/runs/42157864997"
+          },
+          "gitCommit": {
+            "shortHash": "b0b6f59",
+            "hash": "b0b6f59f4db51a19f7ac60d52a40777eed6ef849",
+            "subject": "Merge bb38f0664f524d24129c48da8ea60d05503bddd4 into dbdf5933c0a0870c9c933879c8b0dc94a42908d2",
+            "body": "Merge bb38f0664f524d24129c48da8ea60d05503bddd4 into dbdf5933c0a0870c9c933879c8b0dc94a42908d2\n",
+            "author": {
+              "name": "DJ BATALONA",
+              "email": "batalona06@gmail.com",
+              "time": 1793936365000
+            },
+            "committer": {
+              "name": "GitHub",
+              "email": "noreply@github.com",
+              "time": 1793936365000
+            },
+            "branch": "HEAD"
+          },
+          "gitDiff": "diff --git a/worker/scripts/create-admin.mjs b/worker/scripts/create-admin.mjs\nnew file mode 100644\nindex 0000000..a7420c1\n--- /dev/null\n+++ b/worker/scripts/create-admin.mjs\n@@ -0,0 +1,66 @@\n+#!/usr/bin/env node\n+// Creates an admin account, or promotes an existing account to admin and sets its password.\n+//\n+// The password is read from the ADMIN_PASSWORD environment variable. It is never printed and never\n+// written into the repo. The SQL goes to the --out file, which you delete after running it.\n+//\n+//   cd worker\n+//   ADMIN_PASSWORD='...' node scripts/create-admin.mjs \\\n+//     --email you@example.com --name \"Your Name\" --out \"$HOME/admin-bootstrap.sql\"\n+//   npx wrangler d1 execute DB --remote --env production --file \"$HOME/admin-bootstrap.sql\"\n+//   rm \"$HOME/admin-bootstrap.sql\"\n+//\n+// For local testing, drop --remote/--env and add --local instead.\n+\n+import { randomBytes, webcrypto } from 'node:crypto';\n+import { writeFileSync } from 'node:fs';\n+import { parseArgs } from 'node:util';\n+\n+const { subtle } = webcrypto;\n+const ITER = 100_000; // Must match worker/src/lib/crypto.ts, or login will reject the hash.\n+const enc = new TextEncoder();\n+const hex = (buf) => Buffer.from(buf).toString('hex');\n+\n+async function pbkdf2(password, salt) {\n+  const key = await subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);\n+  return hex(await subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: ITER }, key, 256));\n+}\n+\n+async function hashPassword(password) {\n+  const salt = randomBytes(16);\n+  return `pbkdf2$${ITER}$${hex(salt)}$${await pbkdf2(password, salt)}`;\n+}\n+\n+const { values } = parseArgs({\n+  options: {\n+    email: { type: 'string' },\n+    name: { type: 'string', default: 'Owner' },\n+    out: { type: 'string' },\n+  },\n+});\n+\n+const email = values.email?.trim().toLowerCase();\n+const name = values.name.trim();\n+const password = process.env.ADMIN_PASSWORD;\n+\n+if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error('Pass a valid --email');\n+if (!name || name.length > 100) throw new Error('--name must be 1-100 characters');\n+if (!values.out) throw new Error('Pass --out <file.sql> (outside the repo)');\n+if (!password) throw new Error('Set ADMIN_PASSWORD in the environment for this command');\n+if (password.length > 200) throw new Error('Password is over the 200-character limit the API enforces');\n+if (password.length < 12) {\n+  console.warn(`Warning: the password is ${password.length} characters. The app's own password-change rule needs 12+.`);\n+}\n+\n+const q = (s) => `'${s.replace(/'/g, \"''\")}'`;\n+const id = hex(randomBytes(16));\n+const hash = await hashPassword(password);\n+\n+// If the email already exists, keep its id and history: promote it, reactivate it, and replace the password.\n+const sql = `INSERT INTO users (id, email, role, display_name, locale, password_hash, active)\n+VALUES (${q(id)}, ${q(email)}, 'admin', ${q(name)}, 'en', ${q(hash)}, 1)\n+ON CONFLICT(email) DO UPDATE SET role = 'admin', active = 1, password_hash = excluded.password_hash;\n+`;\n+\n+writeFileSync(values.out, sql, { mode: 0o600 });\n+console.log(`Wrote ${values.out} for ${email} (role: admin). The password and hash were not printed.`);",
+          "actualWorkers": 1
+        },
+        "id": "phone",
+        "name": "phone",
+        "testDir": "/home/runner/work/Empire/Empire/e2e/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/admin\\.spec/"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": {
+      "command": "./start-api.sh",
+      "url": "http://localhost:8787",
+      "reuseExistingServer": true,
+      "timeout": 120000
+    }
+  },
+  "suites": [
+    {
+      "title": "01-app-contract.spec.ts",
+      "file": "01-app-contract.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "coworker → customer flow the iOS app depends on",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 477,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-06T03:40:14.290Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7e127c602d53e97be8a6-0b1af5774cbef6a2aaea",
+          "file": "01-app-contract.spec.ts",
+          "line": 20,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "02-admin.spec.ts",
+      "file": "02-admin.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "admin console sections load without errors",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1948,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-06T03:40:14.807Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "55d164b620f227ae3129-788d7ffb44c2cacc5061",
+          "file": "02-admin.spec.ts",
+          "line": 6,
+          "column": 1
+        },
+        {
+          "title": "admin console sections load without errors",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "phone",
+              "projectName": "phone",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3165,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-06T03:40:18.613Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "55d164b620f227ae3129-8f4aa89d085495816118",
+          "file": "02-admin.spec.ts",
+          "line": 6,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-06T03:40:06.676Z",
+    "duration": 15284.753,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
