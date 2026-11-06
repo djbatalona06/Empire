@@ -420,6 +420,7 @@ async function boot() {
     try { return await start(); } catch (e) { $('#login-msg').textContent = e.message; }
   }
   $('#login').hidden = false;
+  await showPinIfSet();
 }
 
 $('#login-form').addEventListener('submit', async (e) => {
@@ -440,6 +441,88 @@ $('#logout').onclick = async () => {
   await api('/auth/logout', { body: { refresh_token: session.refresh } }).catch(() => {});
   session.clear();
   location.href = '/';
+};
+
+// ---- Device PIN (quick sign-in) -------------------------------------------
+// The device id is a random value kept in this browser only. The PIN itself is checked by the server, per device,
+// and five wrong tries lock the device until the person signs in with email or password again.
+
+const randomHex = (bytes) => [...crypto.getRandomValues(new Uint8Array(bytes))].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+function deviceId() {
+  try {
+    let id = localStorage.getItem('dd-device');
+    if (!id) { id = randomHex(16); localStorage.setItem('dd-device', id); }
+    return id;
+  } catch {
+    return randomHex(16); // Storage is blocked (private window): the PIN works here but can't be remembered.
+  }
+}
+
+async function showPinIfSet() {
+  const status = await api(`/auth/pin/status?device_id=${deviceId()}`).catch(() => ({ set: false, locked: false }));
+  if (!status.set) return;
+  if (status.locked) {
+    $('#login-msg').textContent = 'Too many wrong PINs on this device. Sign in with your email or password to reset it.';
+    return;
+  }
+  $('#login-form').hidden = true;
+  $('#pin-form').hidden = false;
+  $('#pin-form input[name="pin"]').focus();
+}
+
+$('#pin-switch').onclick = () => {
+  $('#pin-form').hidden = true;
+  $('#login-form').hidden = false;
+  $('#pin-msg').textContent = '';
+};
+
+$('#pin-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = $('#pin-msg');
+  msg.textContent = '';
+  try {
+    session.save(await api('/auth/pin', { body: { device_id: deviceId(), pin: formValues(e.target).pin } }));
+    e.target.reset();
+    return start().catch((err) => (msg.textContent = err.message));
+  } catch (err) {
+    msg.textContent = err.message;
+    if (/Too many wrong PINs/.test(err.message)) { // Locked: show the reason on the email form, then switch to it.
+      $('#login-msg').textContent = err.message;
+      $('#pin-switch').click();
+    }
+  }
+});
+
+$('#set-pin').onclick = () => {
+  $('#pin-set-msg').textContent = '';
+  $('#pin-dialog').showModal();
+};
+
+$('#pin-set-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const v = formValues(e.target);
+  const msg = $('#pin-set-msg');
+  if (v.pin !== v.confirm) { msg.textContent = 'The two PINs do not match.'; return; }
+  try {
+    await api('/me/pin', { method: 'PUT', body: { device_id: deviceId(), pin: v.pin } });
+    e.target.reset();
+    $('#pin-dialog').close();
+    toast('PIN saved for this device.');
+  } catch (err) {
+    msg.textContent = err.message;
+  }
+});
+
+$('#pin-remove').onclick = async () => {
+  const msg = $('#pin-set-msg');
+  try {
+    await api(`/me/pin/${deviceId()}`, { method: 'DELETE' });
+    $('#pin-dialog').close();
+    toast('PIN removed from this device.');
+  } catch (err) {
+    msg.textContent = err.message;
+  }
 };
 
 boot();

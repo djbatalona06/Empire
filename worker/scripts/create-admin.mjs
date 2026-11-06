@@ -7,7 +7,7 @@
 //   cd worker
 //   ADMIN_PASSWORD='...' node scripts/create-admin.mjs \
 //     --email you@example.com --name "Your Name" --out "$HOME/admin-bootstrap.sql"
-//   npx wrangler d1 execute DB --remote --env production --file "$HOME/admin-bootstrap.sql"
+//   npx wrangler d1 execute empire_accounts --remote --env production --file "$HOME/admin-bootstrap.sql"
 //   rm "$HOME/admin-bootstrap.sql"
 //
 // For local testing, drop --remote/--env and add --local instead.

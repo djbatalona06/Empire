@@ -23,6 +23,16 @@
     <p id="login-msg" class="muted" role="status"></p>
     <p class="muted"><a href="/privacy">Privacy policy</a></p>
   </form>
+
+  <!-- Shown instead of the sign-in form when this device already has a PIN. -->
+  <form id="pin-form" class="card" hidden>
+    <h1>Enter your PIN</h1>
+    <p class="muted">Your PIN opens this device only. It is yours, so don't share it.</p>
+    <label>PIN <input name="pin" type="password" inputmode="numeric" pattern="\d{4,8}" minlength="4" maxlength="8" required autocomplete="off"></label>
+    <button type="submit">Unlock</button>
+    <button type="button" id="pin-switch" class="link">Use email or password instead</button>
+    <p id="pin-msg" class="muted" role="status"></p>
+  </form>
 </main>
 
 <!-- ===== App shell ===== -->
@@ -43,7 +53,7 @@
     <a href="#users" data-roles="admin">Users &amp; crews</a>
     <a href="#settings" data-roles="lead admin">Settings</a>
     <a href="#audit" data-roles="admin">Audit log</a>
-    <div class="me"><span id="me-name"></span><button id="logout" class="link">Sign out</button></div>
+    <div class="me"><span id="me-name"></span><button id="set-pin" class="link">Device PIN</button><button id="logout" class="link">Sign out</button></div>
   </nav>
 
   <main class="content">
@@ -251,6 +261,19 @@
     </label>
     <label class="check"><input type="checkbox" name="send" checked> Send now</label>
     <button type="submit">Create invoice</button>
+  </form>
+</dialog>
+
+<!-- ===== Device PIN ===== -->
+<dialog id="pin-dialog">
+  <form method="dialog" class="dialog-head"><h2>Device PIN</h2><button class="link" aria-label="Close">✕</button></form>
+  <p class="muted">Set a 4 to 8 digit PIN for this device only. Use one you will remember and don't share.</p>
+  <form id="pin-set-form" class="grid">
+    <label>New PIN <input name="pin" type="password" inputmode="numeric" pattern="\d{4,8}" minlength="4" maxlength="8" required autocomplete="new-password"></label>
+    <label>Type it again <input name="confirm" type="password" inputmode="numeric" pattern="\d{4,8}" minlength="4" maxlength="8" required autocomplete="new-password"></label>
+    <button type="submit">Save PIN</button>
+    <button type="button" id="pin-remove" class="danger">Remove PIN from this device</button>
+    <p id="pin-set-msg" class="muted" role="status"></p>
   </form>
 </dialog>
 

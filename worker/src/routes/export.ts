@@ -52,8 +52,8 @@ app.get('/admin/export/:kind', requireAuth(...BACKOFFICE), async (c) => {
   const user = c.get('user');
   if (!spec!.roles.includes(user.role)) fail(403, 'forbidden');
 
-  const { results } = await c.env.DB.prepare(spec!.sql).all<Record<string, unknown>>();
-  await audit(c.env.DB, user.id, 'export.csv', kind, null, { rows: results.length }).run();
+  const { results } = await c.env.empire_accounts.prepare(spec!.sql).all<Record<string, unknown>>();
+  await audit(c.env.empire_accounts, user.id, 'export.csv', kind, null, { rows: results.length }).run();
 
   const stamp = new Date().toISOString().slice(0, 10);
   return c.body(toCsv(spec!.columns, results), 200, {

@@ -91,6 +91,6 @@ npx wrangler secret put JWT_SECRET --env production             # repeat for eac
 npm run db:migrate:prod
 npx wrangler deploy --env production
 # first admin:
-npx wrangler d1 execute DB --remote --env production \
+npx wrangler d1 execute empire_accounts --remote --env production \
   --command "INSERT INTO users (id, email, role, display_name) VALUES (lower(hex(randomblob(16))), 'you@dealer.com', 'admin', 'Owner')"
 ```

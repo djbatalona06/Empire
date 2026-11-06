@@ -1,5 +1,5 @@
 export interface Env {
-  DB: D1Database;
+  empire_accounts: D1Database;
   FILES: R2Bucket;
   AUTH_LIMITER?: RateLimit;
   API_LIMITER?: RateLimit;

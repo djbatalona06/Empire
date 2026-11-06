@@ -3,10 +3,10 @@ import { applyD1Migrations, env } from 'cloudflare:test';
 declare global {
   namespace Cloudflare {
     interface Env {
-      DB: D1Database;
+      empire_accounts: D1Database;
       TEST_MIGRATIONS: import('cloudflare:test').D1Migration[];
     }
   }
 }
 
-await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
+await applyD1Migrations(env.empire_accounts, env.TEST_MIGRATIONS);

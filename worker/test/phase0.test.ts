@@ -52,7 +52,7 @@ describe('admin user guards', () => {
   });
 
   it('keeps at least one active admin', async () => {
-    await env.DB.prepare(`UPDATE users SET active = 0 WHERE role = 'admin'`).run();
+    await env.empire_accounts.prepare(`UPDATE users SET active = 0 WHERE role = 'admin'`).run();
     const a = await user('admin');
     const lone = await api(`/v1/admin/users/${a.id}`, { method: 'PATCH', token: a.token, body: { active: false } });
     expect(lone.status).toBe(409);
@@ -64,12 +64,12 @@ describe('admin user guards', () => {
 
   it('can remove a user from a crew with crew_id null, and leaves the crew alone when the key is missing', async () => {
     const admin = await user('admin');
-    await env.DB.prepare(`INSERT INTO crews (id, name) VALUES ('crew-p0', 'Phase zero crew')`).run();
+    await env.empire_accounts.prepare(`INSERT INTO crews (id, name) VALUES ('crew-p0', 'Phase zero crew')`).run();
     const rep = await user('coworker', { crew_id: 'crew-p0' });
     await api(`/v1/admin/users/${rep.id}`, { method: 'PATCH', token: admin.token, body: { display_name: 'Renamed' } });
-    expect((await env.DB.prepare('SELECT crew_id FROM users WHERE id = ?').bind(rep.id).first())?.crew_id).toBe('crew-p0');
+    expect((await env.empire_accounts.prepare('SELECT crew_id FROM users WHERE id = ?').bind(rep.id).first())?.crew_id).toBe('crew-p0');
     await api(`/v1/admin/users/${rep.id}`, { method: 'PATCH', token: admin.token, body: { crew_id: null } });
-    expect((await env.DB.prepare('SELECT crew_id FROM users WHERE id = ?').bind(rep.id).first())?.crew_id).toBeNull();
+    expect((await env.empire_accounts.prepare('SELECT crew_id FROM users WHERE id = ?').bind(rep.id).first())?.crew_id).toBeNull();
   });
 
   it('answers 404 for a user that does not exist and hides database errors on duplicates', async () => {
@@ -88,7 +88,7 @@ describe('processor webhook cross-checks', () => {
     const res = await api('/v1/webhooks/stripe', await stripeEvent({ id: 'pi_too_much', amount: 999999, currency: 'usd', metadata: { invoice_id: inv.body.id, method: 'card' } }));
     expect(res.status).toBe(200);
     expect(res.body.ignored).toBe(true);
-    expect((await env.DB.prepare('SELECT amount_paid_cents FROM invoices WHERE id = ?').bind(inv.body.id).first())?.amount_paid_cents).toBe(0);
+    expect((await env.empire_accounts.prepare('SELECT amount_paid_cents FROM invoices WHERE id = ?').bind(inv.body.id).first())?.amount_paid_cents).toBe(0);
   });
 
   it('ignores a payment in another currency or for an unknown invoice', async () => {

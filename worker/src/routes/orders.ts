@@ -69,11 +69,11 @@ app.post('/orders', requireAuth(...STAFF), async (c) => {
   const body = await readJson(c);
   const u = c.get('user');
   const id = clientId(body.id);
-  const replay = await c.env.DB.prepare('SELECT id, status FROM orders WHERE id = ?').bind(id).first();
+  const replay = await c.env.empire_accounts.prepare('SELECT id, status FROM orders WHERE id = ?').bind(id).first();
   if (replay) return c.json(replay);
 
   const leadScope = u.role === 'coworker' ? ' AND coworker_id = ?' : '';
-  const lead = await c.env.DB.prepare(`SELECT * FROM leads WHERE id = ?${leadScope}`)
+  const lead = await c.env.empire_accounts.prepare(`SELECT * FROM leads WHERE id = ?${leadScope}`)
     .bind(reqStr(body, 'lead_id', { max: 64 }), ...(leadScope ? [u.id] : []))
     .first<{ id: string; coworker_id: string; customer_name: string; email: string | null; status: string; created_at: string }>();
   if (!lead) fail(404, 'lead_not_found');
@@ -82,7 +82,7 @@ app.post('/orders', requireAuth(...STAFF), async (c) => {
 
   const skus = Array.isArray(body.skus) ? [...new Set(body.skus.filter((s): s is string => typeof s === 'string'))] : [];
   if (!skus.length || skus.length > 10) fail(400, 'invalid_skus');
-  const { results: items } = await c.env.DB.prepare(`SELECT * FROM catalog_items WHERE active = 1 AND sku IN (${skus.map(() => '?').join(',')})`)
+  const { results: items } = await c.env.empire_accounts.prepare(`SELECT * FROM catalog_items WHERE active = 1 AND sku IN (${skus.map(() => '?').join(',')})`)
     .bind(...skus)
     .all<{ sku: string; kind: string; name: string; monthly_price_cents: number; promo_price_cents: number | null; promo_months: number | null; contract_months: number; speed_mbps: number | null; commission_cents: number }>();
   if (items.length !== skus.length) fail(422, 'unknown_sku');
@@ -99,26 +99,26 @@ app.post('/orders', requireAuth(...STAFF), async (c) => {
   };
 
   // Customer account keyed by email; staff accounts can't double as customers.
-  let customer = await c.env.DB.prepare('SELECT id, role FROM users WHERE email = ?').bind(lead!.email).first<{ id: string; role: string }>();
+  let customer = await c.env.empire_accounts.prepare('SELECT id, role FROM users WHERE email = ?').bind(lead!.email).first<{ id: string; role: string }>();
   const stmts: D1PreparedStatement[] = [];
   if (!customer) {
     customer = { id: newId(), role: 'customer' };
-    stmts.push(c.env.DB.prepare(`INSERT INTO users (id, email, role, display_name, locale) VALUES (?, ?, 'customer', ?, ?)`).bind(customer.id, lead!.email, lead!.customer_name, locale));
+    stmts.push(c.env.empire_accounts.prepare(`INSERT INTO users (id, email, role, display_name, locale) VALUES (?, ?, 'customer', ?, ?)`).bind(customer.id, lead!.email, lead!.customer_name, locale));
   } else if (customer.role !== 'customer') fail(409, 'email_belongs_to_staff');
 
   stmts.push(
-    c.env.DB.prepare(`INSERT INTO orders (id, lead_id, customer_id, coworker_id, bundle_json, install_window_start, install_window_end, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted')`)
+    c.env.empire_accounts.prepare(`INSERT INTO orders (id, lead_id, customer_id, coworker_id, bundle_json, install_window_start, install_window_end, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted')`)
       .bind(id, lead!.id, customer.id, lead!.coworker_id, JSON.stringify(bundle), windowStart, windowEnd),
     ...STAGES.map((stage, i) =>
-      c.env.DB.prepare(`INSERT INTO order_timeline (id, order_id, stage, status, completed_at, sort_order) VALUES (?, ?, ?, ?, ?, ?)`).bind(
+      c.env.empire_accounts.prepare(`INSERT INTO order_timeline (id, order_id, stage, status, completed_at, sort_order) VALUES (?, ?, ?, ?, ?, ?)`).bind(
         newId(), id, stage, i < DONE_AT_ORDER ? 'complete' : 'pending',
         i < DONE_AT_ORDER ? (stage === 'interest_captured' ? lead!.created_at : new Date().toISOString()) : null, i,
       ),
     ),
-    c.env.DB.prepare(`INSERT INTO commissions (order_id, coworker_id, estimate_cents) VALUES (?, ?, ?)`).bind(id, lead!.coworker_id, items.reduce((s, i) => s + i.commission_cents, 0)),
-    c.env.DB.prepare(`UPDATE leads SET status = 'order', updated_at = datetime('now') WHERE id = ?`).bind(lead!.id),
+    c.env.empire_accounts.prepare(`INSERT INTO commissions (order_id, coworker_id, estimate_cents) VALUES (?, ?, ?)`).bind(id, lead!.coworker_id, items.reduce((s, i) => s + i.commission_cents, 0)),
+    c.env.empire_accounts.prepare(`UPDATE leads SET status = 'order', updated_at = datetime('now') WHERE id = ?`).bind(lead!.id),
   );
-  await c.env.DB.batch(stmts);
+  await c.env.empire_accounts.batch(stmts);
 
   if (c.env.APP_STORE_URL) {
     c.executionCtx.waitUntil(
@@ -134,7 +134,7 @@ app.post('/orders', requireAuth(...STAFF), async (c) => {
 app.get('/orders', requireAuth(), async (c) => {
   const [scope, args] = orderScope(c.get('user'));
   const status = c.req.query('status');
-  const { results } = await c.env.DB.prepare(
+  const { results } = await c.env.empire_accounts.prepare(
     `SELECT o.id, o.status, o.install_scheduled_at, o.activated_at, o.created_at, o.bundle_json, p.address, cu.display_name AS customer_name, cw.display_name AS coworker_name,
        (SELECT COUNT(*) FROM invoices WHERE order_id = o.id AND status NOT IN ('paid','draft')) AS open_invoices
      FROM orders o LEFT JOIN leads l ON l.id = o.lead_id LEFT JOIN properties p ON p.id = l.property_id
@@ -148,40 +148,40 @@ app.get('/orders', requireAuth(), async (c) => {
 
 app.get('/orders/:id', requireAuth(), async (c) => {
   const u = c.get('user');
-  const order = await loadOrder(c.env.DB, u, c.req.param('id'));
-  const rows = await timeline(c.env.DB, order.id);
+  const order = await loadOrder(c.env.empire_accounts, u, c.req.param('id'));
+  const rows = await timeline(c.env.empire_accounts, order.id);
   const { bundle_json, ...rest } = order;
   const base = { ...rest, bundle: JSON.parse(bundle_json), billing_notice: t(u.locale).att_billing_notice };
   if (u.role === 'customer') {
     const { coworker_id, lead_id, att_order_ref, ...pub } = base as Record<string, unknown>;
     return c.json({ ...pub, timeline: customerTimeline(rows, order, u.locale), feedback_unlocked: !!order.activated_at });
   }
-  const commission = await c.env.DB.prepare('SELECT estimate_cents, actual_cents, status FROM commissions WHERE order_id = ?').bind(order.id).first();
+  const commission = await c.env.empire_accounts.prepare('SELECT estimate_cents, actual_cents, status FROM commissions WHERE order_id = ?').bind(order.id).first();
   return c.json({ ...base, timeline: rows, commission });
 });
 
 app.get('/orders/:id/timeline', requireAuth(), async (c) => {
   const u = c.get('user');
-  const order = await loadOrder(c.env.DB, u, c.req.param('id'));
-  const rows = await timeline(c.env.DB, order.id);
+  const order = await loadOrder(c.env.empire_accounts, u, c.req.param('id'));
+  const rows = await timeline(c.env.empire_accounts, order.id);
   return c.json(u.role === 'customer' ? customerTimeline(rows, order, u.locale) : rows);
 });
 
 app.patch('/orders/:id', requireAuth(...BACKOFFICE), async (c) => {
   const u = c.get('user');
-  const order = await loadOrder(c.env.DB, u, c.req.param('id'));
+  const order = await loadOrder(c.env.empire_accounts, u, c.req.param('id'));
   const body = await readJson(c);
   const cancel = body.status === 'cancelled';
   const reason = str(body, 'cancelled_reason', { optional: true, max: 300 });
   if (cancel && !reason) fail(400, 'reason_required');
   if (cancel && ['activated', 'closed'].includes(order.status)) fail(409, 'cannot_cancel_active_order');
-  await c.env.DB.batch([
-    c.env.DB.prepare(
+  await c.env.empire_accounts.batch([
+    c.env.empire_accounts.prepare(
       `UPDATE orders SET att_order_ref = COALESCE(?, att_order_ref), install_window_start = COALESCE(?, install_window_start), install_window_end = COALESCE(?, install_window_end),
          status = CASE WHEN ? THEN 'cancelled' ELSE status END, cancelled_reason = COALESCE(?, cancelled_reason), updated_at = datetime('now') WHERE id = ?`,
     ).bind(str(body, 'att_order_ref', { optional: true, max: 64 }) ?? null, str(body, 'install_window_start', { optional: true, pattern: isoDateTime }) ?? null,
       str(body, 'install_window_end', { optional: true, pattern: isoDateTime }) ?? null, cancel ? 1 : 0, reason ?? null, order.id),
-    audit(c.env.DB, u.id, cancel ? 'order.cancel' : 'order.update', 'order', order.id, body),
+    audit(c.env.empire_accounts, u.id, cancel ? 'order.cancel' : 'order.update', 'order', order.id, body),
   ]);
   return c.json({ ok: true });
 });
@@ -192,7 +192,7 @@ const CUSTOMER_PUSH_STAGES = new Set(['install_scheduled', 'install_complete', '
 
 app.patch('/timeline/:id', requireAuth(...BACKOFFICE), async (c) => {
   const u = c.get('user');
-  const row = await c.env.DB.prepare('SELECT t.*, o.customer_id, o.status AS order_status FROM order_timeline t JOIN orders o ON o.id = t.order_id WHERE t.id = ?')
+  const row = await c.env.empire_accounts.prepare('SELECT t.*, o.customer_id, o.status AS order_status FROM order_timeline t JOIN orders o ON o.id = t.order_id WHERE t.id = ?')
     .bind(c.req.param('id'))
     .first<TimelineRow & { order_id: string; customer_id: string; order_status: string }>();
   if (!row) fail(404, 'stage_not_found');
@@ -204,14 +204,14 @@ app.patch('/timeline/:id', requireAuth(...BACKOFFICE), async (c) => {
 
   if (status === 'complete' && stage !== 'invoice_paid') {
     // Stages complete in order; invoice payment may land any time but must precede closing.
-    const open = await c.env.DB.prepare(`SELECT stage FROM order_timeline WHERE order_id = ? AND sort_order < ? AND status <> 'complete' AND (stage <> 'invoice_paid' OR ? = 'closed') LIMIT 1`)
+    const open = await c.env.empire_accounts.prepare(`SELECT stage FROM order_timeline WHERE order_id = ? AND sort_order < ? AND status <> 'complete' AND (stage <> 'invoice_paid' OR ? = 'closed') LIMIT 1`)
       .bind(row!.order_id, row!.sort_order, stage)
       .first<{ stage: string }>();
     if (open) fail(409, 'previous_stage_open', `Complete "${open.stage}" first`);
   }
   if (stage === 'closed' && status === 'complete') {
     if (u.role !== 'admin') fail(403, 'admin_only');
-    const comm = await c.env.DB.prepare('SELECT status FROM commissions WHERE order_id = ?').bind(row!.order_id).first<{ status: string }>();
+    const comm = await c.env.empire_accounts.prepare('SELECT status FROM commissions WHERE order_id = ?').bind(row!.order_id).first<{ status: string }>();
     if (comm?.status !== 'reconciled') fail(409, 'commission_not_reconciled');
   }
   if (stage === 'install_scheduled' && status === 'complete' && !at) fail(400, 'at_required', 'Install date/time is required');
@@ -224,16 +224,16 @@ app.patch('/timeline/:id', requireAuth(...BACKOFFICE), async (c) => {
     closed: `status = 'closed'`,
   };
   const stmts = [
-    c.env.DB.prepare(
+    c.env.empire_accounts.prepare(
       `UPDATE order_timeline SET status = COALESCE(?, status), note_internal = COALESCE(?, note_internal), note_customer = COALESCE(?, note_customer),
          completed_at = CASE WHEN ? = 'complete' THEN datetime('now') WHEN ? IS NOT NULL THEN NULL ELSE completed_at END, updated_by = ? WHERE id = ?`,
     ).bind(status ?? null, str(body, 'note_internal', { optional: true, max: 1000 }) ?? null, str(body, 'note_customer', { optional: true, max: 500 }) ?? null,
       status ?? null, status ?? null, u.id, row!.id),
-    audit(c.env.DB, u.id, 'timeline.update', 'order', row!.order_id, { stage, ...body }),
+    audit(c.env.empire_accounts, u.id, 'timeline.update', 'order', row!.order_id, { stage, ...body }),
   ];
   const effect = status === 'complete' ? orderEffect[stage] : undefined;
-  if (effect) stmts.push(c.env.DB.prepare(`UPDATE orders SET ${effect}, updated_at = datetime('now') WHERE id = ?2`).bind(at ?? null, row!.order_id));
-  await c.env.DB.batch(stmts);
+  if (effect) stmts.push(c.env.empire_accounts.prepare(`UPDATE orders SET ${effect}, updated_at = datetime('now') WHERE id = ?2`).bind(at ?? null, row!.order_id));
+  await c.env.empire_accounts.batch(stmts);
 
   if (status && CUSTOMER_PUSH_STAGES.has(stage) && (status === 'complete' || status === 'delayed')) {
     c.executionCtx.waitUntil(
@@ -245,7 +245,7 @@ app.patch('/timeline/:id', requireAuth(...BACKOFFICE), async (c) => {
       }),
     );
   }
-  return c.json(await c.env.DB.prepare('SELECT * FROM order_timeline WHERE id = ?').bind(row!.id).first());
+  return c.json(await c.env.empire_accounts.prepare('SELECT * FROM order_timeline WHERE id = ?').bind(row!.id).first());
 });
 
 export default app;

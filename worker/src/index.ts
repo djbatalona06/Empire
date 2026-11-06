@@ -44,7 +44,7 @@ app.use('/v1/*', limitWrites);
 // Checks the database and file storage, so an uptime monitor notices a real outage, not just a live Worker.
 app.get('/v1/health', async (c) => {
   const checks = {
-    db: await c.env.DB.prepare('SELECT 1').first().then(() => true, () => false),
+    db: await c.env.empire_accounts.prepare('SELECT 1').first().then(() => true, () => false),
     files: await c.env.FILES.head('health-check').then(() => true, () => false),
   };
   const ok = checks.db && checks.files;
