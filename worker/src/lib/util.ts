@@ -105,6 +105,24 @@ export function audit(db: D1Database, actorId: string, action: string, entity: s
     .bind(newId(), actorId, action, entity, entityId, detail === undefined ? null : JSON.stringify(detail));
 }
 
+// ---- CSV -----------------------------------------------------------------
+
+/**
+ * One CSV cell. Text that starts with = + - @ (or a tab / carriage return) would be run as a formula when
+ * the file is opened in Excel or Sheets, so it gets a leading apostrophe. Real numbers are left alone.
+ */
+export function csvCell(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'number') return String(v);
+  let s = String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+export function toCsv(columns: string[], rows: Record<string, unknown>[]): string {
+  return [columns.join(','), ...rows.map((r) => columns.map((k) => csvCell(r[k])).join(','))].join('\r\n') + '\r\n';
+}
+
 export const normalizeAddress = (a: string) =>
   a.toUpperCase().replace(/[.,#]/g, ' ').replace(/\bSOUTH\b/g, 'S').replace(/\bSTREET\b/g, 'ST').replace(/\bAVENUE\b/g, 'AVE').replace(/\s+/g, ' ').trim();
 

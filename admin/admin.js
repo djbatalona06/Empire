@@ -361,6 +361,28 @@ function bindForms() {
   });
 }
 
+// ---- CSV export -------------------------------------------------------------
+
+/** Downloads a CSV from the API. Uses fetch (not a plain link) because the request carries the sign-in token. */
+async function downloadCsv(kind) {
+  await api('/me'); // refreshes an expired sign-in first
+  const res = await fetch(`/v1/admin/export/${kind}`, { headers: { authorization: `Bearer ${session.access}` } });
+  if (!res.ok) throw new Error(((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`).replaceAll('_', ' '));
+  const url = URL.createObjectURL(await res.blob());
+  const a = el('a', { href: url, download: `dealerdoor-${kind}-${new Date().toLocaleDateString('en-CA')}.csv` });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function bindExports() {
+  for (const b of $$('[data-export]')) {
+    b.hidden = !b.dataset.roles.split(' ').includes(me.role);
+    b.onclick = guard(() => downloadCsv(b.dataset.export));
+  }
+}
+
 // ---- Navigation & auth ------------------------------------------------------
 
 function show(name) {
@@ -382,6 +404,7 @@ async function start() {
   $('#login').hidden = true;
   $('#app').hidden = false;
   bindForms();
+  bindExports();
   window.addEventListener('hashchange', () => show(location.hash.slice(1)));
   show(location.hash.slice(1) || 'overview');
 }

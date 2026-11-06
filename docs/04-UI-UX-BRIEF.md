@@ -26,6 +26,8 @@
 - **Route map:** full-screen map, blue SeaTac outline, numbered-feel house pins, bottom material bar with route name, progress and permit.
 - **Lead capture:** single form, sections in the order the conversation happens: address → customer → interest → photo → consent + signature. Save stays disabled until consent + signature exist.
 - **Pulse:** three segmented 1–5 scales, "Poor … Great" captions, anonymous toggle on by default.
+- **Admin lists:** an "Export CSV" button sits under the page title on Leads, Orders, Invoices and Commissions (only for roles allowed to export). Cells that start with `=`, `+`, `-` or `@` are saved with a leading apostrophe so a spreadsheet never runs them as a formula.
+- **Privacy policy:** one plain, readable page that works in light and dark mode, reachable from the console sign-in page and the console footer.
 
 ## Accessibility
 

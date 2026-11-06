@@ -9,7 +9,8 @@ The code enforces the rules; these items need a real person.
 - [ ] AT&T dealer agreement allows "Authorized Retailer" wording and these dealer-billed fees.
 - [ ] App name and icon use dealer branding only (no AT&T logo without written approval).
 - [ ] SeaTac solicitation permit number entered in Settings.
-- [ ] Privacy policy URL (App Store and Google Play both require one) covering location, photos, contact data, payments.
+- [ ] Privacy policy: a draft is served at `https://<your api domain>/privacy` (file `admin/privacy.html`). Counsel approves it and you fill the `[BRACKETED]` parts (company name, keep period, contact). Use that URL in App Store Connect and Google Play.
+- [ ] Decide with counsel what the store forms should say about **deleting an account**. Customers cannot delete their account in the app yet (planned, see [09-REMAINING-WORK.md](09-REMAINING-WORK.md)); do this before submitting.
 
 ## Data
 
@@ -31,6 +32,7 @@ Create the two review accounts in Admin → Users, then set their passwords via 
 
 - [ ] Google Play developer account; create the app with package `com.dealerdoor.app`.
 - [ ] Fill the **Data safety** form to match the privacy policy: location (rep check-in), photos, name/email/phone, payment info (handled by Stripe).
+- [ ] Push on Android needs a Firebase project (FCM). Without it, Android customers only get email updates. Say so in your testing notes.
 - [ ] Use an **internal** or **closed testing** track so only invited people can install, the closest match to App Store "Unlisted".
 - [ ] Copy the app-signing SHA-256 fingerprint (Play Console → App integrity) into the `ANDROID_CERT_SHA256` wrangler var, and build with `-PappLinkHost=<your api domain>` so sign-in emails open the app.
 - [ ] Paste the same review notes and demo accounts as above into **App content → App access**.

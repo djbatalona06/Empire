@@ -8,6 +8,7 @@
     <string name="sign_in">Iniciar sesión</string>
     <string name="email_me_link">Enviarme un enlace de acceso</string>
     <string name="check_email_link">Revise su correo y toque el enlace en este teléfono.</string>
+    <string name="privacy_policy">Política de privacidad</string>
     <string name="locked">DealerDoor está bloqueado</string>
     <string name="unlock">Desbloquear</string>
     <string name="unlock_app">Desbloquear DealerDoor</string>
